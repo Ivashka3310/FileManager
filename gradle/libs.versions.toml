@@ -10,6 +10,7 @@ ktorServerCore = "3.6.0"
 logbackClassic = "1.6.5"
 material = "1.14.0"
 jetbrainsKotlinJvm = "2.4.21"
+ktorSerializationGson = "3.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -21,9 +22,16 @@ ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktorSer
 ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
 ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logbackClassic" }
+ktor-serialization-gson = { module = "io.ktor:ktor-serialization-gson", version.ref = "ktorSerializationGson" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+ktor-server-auth = {group = "io.ktor", name = "ktor-server-auth", version.ref = "ktor" }
+ktor-server-auth-jwt = {group = "io.ktor", name = "ktor-server-auth-jwt", version.ref = "ktor" }
+ktor-server-callLogging = {group = "io.ktor", name = "ktor-server-call-logging", version.ref = "ktor" }
+ktor-server-config-yaml = {group = "io.ktor", name = "ktor-server-config-yaml", version.ref = "ktor" }
+ktor-server-testHost = {group = "io.ktor", name = "ktor-server-test-host", version.ref = "ktor" }
 
 [plugins]
+ktor = {id = "io.ktor.plugin", version.ref = "ktor" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
 
