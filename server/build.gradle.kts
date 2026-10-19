@@ -24,7 +24,10 @@ dependencies {
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.callLogging)
     implementation(libs.ktor.server.config.yaml)
+    implementation(libs.ktor.server.websockets)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)
+
+    implementation(libs.kotlinx.coroutines.core)
 }

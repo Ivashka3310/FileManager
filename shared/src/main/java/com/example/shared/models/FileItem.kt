@@ -8,6 +8,6 @@ data class FileItem(
     val size: Long,
     val isDirectory: Boolean,
     val createdAt: String,
-    val lastModified: FileTime
+    val lastModified: String
 )
 
