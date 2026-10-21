@@ -30,12 +30,31 @@ fun Application.configureRouting(
                     for (frame in incoming) {
                         if (frame is Frame.Text) {
                             val receivedText = frame.readText()
+                            println(receivedText)
 
-                            try {
-                                val files = fileService.getFiles(receivedText)
-                                send(Frame.Text(gson.toJson(files)))
-                            } catch (e: Exception) {
-                                send(Frame.Text(gson.toJson(mapOf("Error" to e.message))))
+                            when {
+                                receivedText.startsWith("DELETE") -> {
+                                    val pathToDelete = receivedText.removePrefix("DELETE ")
+                                    try {
+                                        val success = fileService.deleteFile(pathToDelete)
+                                        if (success) {
+                                            send(Frame.Text("SUCCESS: File deleted"))
+                                        } else {
+                                            send(Frame.Text("ERROR: File not found"))
+                                        }
+                                    } catch (e: SecurityException) {
+                                        send(Frame.Text("ERROR: ${e.message}"))
+                                    } catch (_: Exception) {
+                                        send(Frame.Text("ERROR: Internal server error"))
+                                    }
+                                }
+
+                                else -> try {
+                                    val files = fileService.getFiles(receivedText)
+                                    send(Frame.Text(gson.toJson(files)))
+                                } catch (e: Exception) {
+                                    send(Frame.Text(gson.toJson(mapOf("Error" to e.message))))
+                                }
                             }
                         }
                     }

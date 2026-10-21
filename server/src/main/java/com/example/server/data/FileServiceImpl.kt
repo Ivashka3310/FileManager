@@ -36,4 +36,21 @@ class FileServiceImpl(private val rootPath: Path): FileService {
             }.toList()
         }
     }
+
+    // Necessary testing!!!
+    override suspend fun deleteFile(relativePath: String): Boolean {
+        val resolvedPath = rootPath.resolve(relativePath).normalize()
+
+        if (!resolvedPath.startsWith(rootPath)) {
+            throw SecurityException("Access denied: path is outside root directory! Your path is: $resolvedPath")
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                Files.deleteIfExists(resolvedPath)
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
 }

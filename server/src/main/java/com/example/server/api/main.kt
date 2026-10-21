@@ -13,6 +13,9 @@ import io.ktor.server.websocket.pingPeriod
 import io.ktor.server.websocket.timeout
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.seconds
+import io.ktor.serialization.gson.gson
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -37,14 +40,16 @@ fun Application.module() {
         masking = false
     }
 
-    //val jwtRealm = environment.config.propertyOrNull("jwt.realm")?.getString() ?: "Client-server file manager for Linux"
-
     val jwtService = JwtService(
         audience = environment.config.propertyOrNull("jwt.audience")?.getString() ?: "default-audience",
         issuer = environment.config.propertyOrNull("jwt.issuer")?.getString() ?: "file.manager.issuer-default",
         secret = environment.config.propertyOrNull("jwt.secret")?.getString() ?: "fallback-secret-key",
         validityMs = environment.config.propertyOrNull("jwt.validityMs")?.getString()?.toLong() ?: 604800000L
     )
+
+    install(ContentNegotiation) {
+        gson()
+    }
 
     configureSecurity(jwtService)
 
