@@ -30,7 +30,6 @@ fun Application.configureRouting(
                     for (frame in incoming) {
                         if (frame is Frame.Text) {
                             val receivedText = frame.readText()
-                            println(receivedText)
 
                             when {
                                 receivedText.startsWith("DELETE") -> {

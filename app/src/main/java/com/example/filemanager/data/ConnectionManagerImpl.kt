@@ -1,6 +1,9 @@
 package com.example.filemanager.data
 
 import com.example.filemanager.domain.ConnectionManager
+import com.example.filemanager.domain.ServerResponse
+import com.example.shared.models.FileItem
+import com.google.gson.Gson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -31,7 +34,7 @@ class ConnectionManagerImpl : ConnectionManager {
         install(WebSockets)
     }
 
-    private val _messageFlow = MutableSharedFlow<String>(
+    private val _messageFlow = MutableSharedFlow<ServerResponse>(
         replay = 0,
         extraBufferCapacity = 64
     )
@@ -62,7 +65,7 @@ class ConnectionManagerImpl : ConnectionManager {
             if (response.status != HttpStatusCode.OK) {
                 throw Exception("Auth failed with status: ${response.status}")
             } else {
-                _messageFlow.emit("Сервер найден, устанавливаем подключение...")
+                _messageFlow.emit(ServerResponse.Status("Сервер найден, устанавливаем подключение..."))
             }
 
             val body = response.body<Map<String, String>>()
@@ -76,8 +79,7 @@ class ConnectionManagerImpl : ConnectionManager {
                     connectionEstablished.completeExceptionally(e)
                 }
             }
-            
-            // Wait for the WebSocket session to be established
+
             connectionEstablished.await()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -85,6 +87,7 @@ class ConnectionManagerImpl : ConnectionManager {
         }
     }
 
+    val gson = Gson()
     private suspend fun openWebSocket(host: String, port: Int) {
         client.webSocket(
             method = HttpMethod.Get,
@@ -101,7 +104,22 @@ class ConnectionManagerImpl : ConnectionManager {
             for (frame in incoming) {
                 if (frame is Frame.Text) {
                     val text = frame.readText()
-                    _messageFlow.emit(text)
+                    val response = when {
+                        text.startsWith("SUCCESS") || text.startsWith("ERROR") -> {
+                            ServerResponse.Status(text)
+                        }
+                        text.startsWith("[") -> {
+                                try {
+                                    val type = com.google.gson.reflect.TypeToken.getParameterized(List::class.java, FileItem::class.java).type
+                                    val files = gson.fromJson<List<FileItem>>(text, type)
+                                    ServerResponse.FileList(files)
+                                } catch (e: Exception) {
+                                ServerResponse.Error("Parsing error: ${e.message}")
+                            }
+                        }
+                        else -> ServerResponse.Status(text)
+                    }
+                    _messageFlow.emit(response)
                 }
             }
         }
