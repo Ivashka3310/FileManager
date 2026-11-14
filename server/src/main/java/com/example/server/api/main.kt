@@ -25,20 +25,13 @@ fun Application.module() {
     val secretKey = AuthManager.generateNewSecret()
     val serverIp = environment.config.propertyOrNull("ktor.deployment.ip")?.getString() ?: "localhost"
     val serverPort = environment.config.propertyOrNull("ktor.deployment.port")?.getString() ?: "8888"
-    val qrData = "ws://$serverIp:$serverPort/login?secret=$secretKey"
+    val qrData = "http://$serverIp:$serverPort/login?secret=$secretKey"
 
     ProcessBuilder("qrencode", "-t", "ansiutf8", qrData)
         .inheritIO()
         .start()
         .waitFor()
     println("Server is working! Scan the QR code to connect")
-
-    install(WebSockets) {
-        pingPeriod = 15.seconds
-        timeout = 15.seconds
-        maxFrameSize = Long.MAX_VALUE
-        masking = false
-    }
 
     val jwtService = JwtService(
         audience = environment.config.propertyOrNull("jwt.audience")?.getString() ?: "default-audience",

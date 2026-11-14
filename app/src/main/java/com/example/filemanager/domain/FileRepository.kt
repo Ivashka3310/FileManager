@@ -4,6 +4,7 @@ import com.example.shared.models.FileItem
 import kotlinx.coroutines.flow.Flow
 
 interface FileRepository {
-    suspend fun getFiles(relativePath: String): Flow<List<FileItem>>
+    suspend fun connectViaQrData(qrData: String): Result<Unit>
+    suspend fun getFiles(path: String, offset: Int, limit: Int): List<FileItem>
     suspend fun removeFile(relativePath: String): Flow<String>
 }

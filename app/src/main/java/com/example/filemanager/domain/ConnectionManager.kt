@@ -1,5 +1,6 @@
 package com.example.filemanager.domain
 
+import com.example.shared.models.FileItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 

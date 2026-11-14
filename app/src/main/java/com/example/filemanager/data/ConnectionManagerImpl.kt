@@ -1,7 +1,9 @@
 package com.example.filemanager.data
 
+import android.util.Log
 import com.example.filemanager.domain.ConnectionManager
 import com.example.filemanager.domain.ServerResponse
+import com.example.filemanager.domain.parseServerResponse
 import com.example.shared.models.FileItem
 import com.google.gson.Gson
 import io.ktor.client.HttpClient
@@ -11,6 +13,7 @@ import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -26,21 +29,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.URI
 
-class ConnectionManagerImpl : ConnectionManager {
-    private val client = HttpClient {
-        install(ContentNegotiation) { gson() }
-        install(WebSockets)
-    }
-
+class ConnectionManagerImpl(private val client: HttpClient) : ConnectionManager {
     private val _messageFlow = MutableSharedFlow<ServerResponse>(
         replay = 0,
         extraBufferCapacity = 64
     )
     private var jwtToken: String? = null
-    private var session: DefaultClientWebSocketSession? = null
-    private var connectionEstablished = kotlinx.coroutines.CompletableDeferred<Unit>()
+    private var domain: String? = null
 
     override val messageFlow = _messageFlow.asSharedFlow()
 
@@ -51,12 +49,10 @@ class ConnectionManagerImpl : ConnectionManager {
 
         try {
             val uri = URI(qrData)
-            val host = uri.host ?: throw Exception("Invalid host in QR")
-            val port = uri.port
-            val secret = uri.query?.split("=")?.getOrNull(1)
-                ?: throw Exception("Secret not found in QR")
+            domain = "http://${uri.host ?: throw Exception("Invalid host in QR")}:${uri.port}"
+            val secret = uri.query?.split('=')[1] ?: throw Exception("Secret not found")
 
-            val response = client.post("http://$host:$port/login") {
+            val response = client.post("$domain/login") {
                 setBody(FormDataContent(Parameters.build {
                     append("secret", secret)
                 }))
@@ -65,22 +61,12 @@ class ConnectionManagerImpl : ConnectionManager {
             if (response.status != HttpStatusCode.OK) {
                 throw Exception("Auth failed with status: ${response.status}")
             } else {
-                _messageFlow.emit(ServerResponse.Status("Сервер найден, устанавливаем подключение..."))
+                _messageFlow.emit(ServerResponse.Status("Connecting..."))
             }
 
             val body = response.body<Map<String, String>>()
             val token = body["token"] ?: throw Exception("Token not found in response")
             this.jwtToken = token
-
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    openWebSocket(host, port)
-                } catch (e: Exception) {
-                    connectionEstablished.completeExceptionally(e)
-                }
-            }
-
-            connectionEstablished.await()
         } catch (e: Exception) {
             e.printStackTrace()
             throw e
@@ -88,44 +74,30 @@ class ConnectionManagerImpl : ConnectionManager {
     }
 
     val gson = Gson()
-    private suspend fun openWebSocket(host: String, port: Int) {
-        client.webSocket(
-            method = HttpMethod.Get,
-            host = host,
-            port = port,
-            path = "/files",
-            request = {
-                header(HttpHeaders.Authorization, "Bearer $jwtToken")
-            }
-        ) {
-            session = this@webSocket
-            connectionEstablished.complete(Unit)
 
-            for (frame in incoming) {
-                if (frame is Frame.Text) {
-                    val text = frame.readText()
-                    val response = when {
-                        text.startsWith("SUCCESS") || text.startsWith("ERROR") -> {
-                            ServerResponse.Status(text)
-                        }
-                        text.startsWith("[") -> {
-                                try {
-                                    val type = com.google.gson.reflect.TypeToken.getParameterized(List::class.java, FileItem::class.java).type
-                                    val files = gson.fromJson<List<FileItem>>(text, type)
-                                    ServerResponse.FileList(files)
-                                } catch (e: Exception) {
-                                ServerResponse.Error("Parsing error: ${e.message}")
-                            }
-                        }
-                        else -> ServerResponse.Status(text)
-                    }
-                    _messageFlow.emit(response)
-                }
-            }
-        }
-    }
 
     override suspend fun requestFiles(path: String) {
-        session?.send(Frame.Text(path)) ?: throw Exception("Not connected to server")
+        if (jwtToken.isNullOrEmpty()) throw Exception("Session expired")
+
+        val response = client.get("$domain/files/list") {
+            header("Authorization", "Bearer $jwtToken")
+            setBody(FormDataContent(Parameters.build {
+                append("path", path)
+            }))
+        }
+        when (response.status) {
+            HttpStatusCode.OK -> {
+                val files = response.body<List<FileItem>>()
+                Log.d("RRR", files.toString())
+                _messageFlow.emit(ServerResponse.FileList(files))
+            }
+            HttpStatusCode.Locked -> {
+                val message = response.body<Pair<String, String>>().second
+                _messageFlow.emit(ServerResponse.Status("ERROR: $message"))
+            }
+            else -> {
+                _messageFlow.emit(ServerResponse.Status("Unknown error!"))
+            }
+        }
     }
 }

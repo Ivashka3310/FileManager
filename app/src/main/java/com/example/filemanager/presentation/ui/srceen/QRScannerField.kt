@@ -1,4 +1,4 @@
-package com.example.filemanager.presentation.ui.screen.ManageScreen
+package com.example.filemanager.presentation.ui.srceen
 
 import android.Manifest
 import android.content.pm.PackageManager

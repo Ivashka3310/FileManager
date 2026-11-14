@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">FileManager</string>
     <string name="title_activity_main">File Manager</string>
+    <string name="connect_button_name">Подключиться к ПК</string>
 </resources>

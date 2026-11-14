@@ -1,6 +1,7 @@
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.example.server.api.configureRouting
+import com.example.server.api.module
 import com.example.server.api.security.AuthManager
 import com.example.server.api.security.JwtService
 import com.example.server.api.security.configureSecurity
@@ -10,6 +11,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -17,6 +19,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
+import io.ktor.http.isSuccess
 import io.ktor.serialization.gson.gson
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -29,6 +32,7 @@ import java.util.Date
 import kotlin.io.path.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
@@ -39,12 +43,6 @@ class ServerTest {
             gson()
         }
 
-        install(io.ktor.server.websocket.WebSockets) {
-            pingPeriod = 15.seconds
-            timeout = 15.seconds
-            maxFrameSize = Long.MAX_VALUE
-            masking = false
-        }
         val jwtService = JwtService(
             audience = environment.config.propertyOrNull("jwt.audience")?.getString() ?: "default-audience",
             issuer = environment.config.propertyOrNull("jwt.issuer")?.getString() ?: "file.manager.issuer-default",
@@ -64,7 +62,6 @@ class ServerTest {
         }
 
         val client = createClient {
-            install(WebSockets)
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 gson()
             }
@@ -91,7 +88,6 @@ class ServerTest {
         }
 
         val client = createClient {
-            install(WebSockets)
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 gson()
             }
@@ -112,14 +108,13 @@ class ServerTest {
     }
 
     @Test
-    fun `test getFiles via websocket returns success`() = testApplication {
+    fun `test getFiles via http get returns success`() = testApplication {
         AuthManager.generateNewSecret()
         application {
             config()
         }
 
         val client = createClient {
-            install(WebSockets)
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 gson()
             }
@@ -139,28 +134,24 @@ class ServerTest {
         val body = response.body<Map<String, String>>()
         val token = body["token"] ?: throw Exception("Token not found in response")
 
-        client.webSocket(
-            path = "/files",
-            request = {
-                header(HttpHeaders.Authorization, "Bearer $token")
-            }
-        ) {
-            send(Frame.Text("."))
-            val wsResponse = incoming.receive() as Frame.Text
-            val text = wsResponse.readText()
-            assertTrue(!text.contains("Error"), "Response should not contain error: $text")
+        val filesResponse = client.get("/files/list") {
+            header("Authorization", "Bearer $token")
+            setBody(FormDataContent(Parameters.build {
+                append("path", ".")
+            }))
         }
+
+        assertTrue(filesResponse.status.isSuccess())
     }
 
     @Test
-    fun `test getFiles via websocket returns security error for invalid path`() = testApplication {
+    fun `test getFiles via http get returns security error for invalid path`() = testApplication {
         AuthManager.generateNewSecret()
         application {
             config()
         }
 
         val client = createClient {
-            install(WebSockets)
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 gson()
             }
@@ -180,17 +171,14 @@ class ServerTest {
         val body = response.body<Map<String, String>>()
         val token = body["token"] ?: throw Exception("Token not found in response")
 
-        client.webSocket(
-            path = "/files",
-            request = {
-                header(HttpHeaders.Authorization, "Bearer $token")
-            }
-        ) {
-            send(Frame.Text("../etc"))
-            val wsResponse = incoming.receive() as Frame.Text
-            val text = wsResponse.readText()
-            assertTrue(text.contains("Access denied"), "Client get access to /etc")
+        val filesResponse = client.get("/files/list") {
+            header("Authorization", "Bearer $token")
+            setBody(FormDataContent(Parameters.build {
+                append("path", "..")
+            }))
         }
+
+        assertEquals(HttpStatusCode.Locked, filesResponse.status)
     }
 
     @Test
@@ -246,14 +234,13 @@ class ServerTest {
 
         for (invalidToken in invalidTokens) {
             try {
-                client.webSocket(
-                    path = "/files",
-                    request = {
-                        header(HttpHeaders.Authorization, "Bearer $invalidToken")
-                    }
-                ) {
-                    fail("Connection should have been rejected due to expired token")
+                val response = client.get("/files/list") {
+                    header("Authorization", "Bearer $invalidToken")
+                    setBody(FormDataContent(Parameters.build {
+                        append("path", ".")
+                    }))
                 }
+                assertEquals(HttpStatusCode.Unauthorized, response.status)
             } catch (_: Exception) {
                 assertTrue(true, "Connection rejected as expected")
             }

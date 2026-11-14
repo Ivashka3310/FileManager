@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.play.services.mlkit.barcode.scanning)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
@@ -51,7 +52,14 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.material)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.navigation.compose)
+
     testImplementation(libs.junit)
+    testImplementation(libs.ktor.ktor.client.mock)
+    testImplementation(libs.kotlinx.coroutines.test) // Используйте версию, соответствующую вашим корутинам
+
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
