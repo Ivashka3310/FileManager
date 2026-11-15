@@ -24,7 +24,6 @@ import io.ktor.websocket.readText
 
 fun Application.configureRouting(
     fileService: FileService,
-    gson: Gson,
     jwtService: JwtService
 ) {
     routing {
@@ -45,7 +44,7 @@ fun Application.configureRouting(
                     )
                     call.respond(HttpStatusCode.OK, files)
                 } catch (e: SecurityException) {
-                    call.respond(HttpStatusCode.Locked, mapOf("ERROR" to e.message))
+                    call.respond(HttpStatusCode.Locked, mapOf("message" to e.message))
                 }
             }
 
@@ -60,46 +59,6 @@ fun Application.configureRouting(
             post("/files/copy") {
 
             }
-
-//            webSocket("/files") {
-//                try {
-//                    for (frame in incoming) {
-//                        if (frame is Frame.Text) {
-//                            val receivedText = frame.readText()
-//                            println("Received on ws: $receivedText")
-//
-//                            when {
-//                                receivedText.startsWith("DELETE") -> {
-//                                    val pathToDelete = receivedText.removePrefix("DELETE ")
-//                                    try {
-//                                        val success = fileService.deleteFile(pathToDelete)
-//                                        if (success) {
-//                                            send(Frame.Text("SUCCESS: File deleted"))
-//                                        } else {
-//                                            send(Frame.Text("ERROR: File not found"))
-//                                        }
-//                                    } catch (e: SecurityException) {
-//                                        send(Frame.Text("ERROR: ${e.message}"))
-//                                    } catch (_: Exception) {
-//                                        send(Frame.Text("ERROR: Internal server error"))
-//                                    }
-//                                }
-//
-//                                else -> try {
-//                                    val files = fileService.getFiles(receivedText)
-//                                    send(Frame.Text(gson.toJson(files)))
-//                                } catch (e: Exception) {
-//                                    send(Frame.Text(gson.toJson(mapOf("Error" to e.message))))
-//                                }
-//                            }
-//                        }
-//                    }
-//                } catch (e: Exception) {
-//                    println("WebSocket error: ${e.localizedMessage}")
-//                } finally {
-//                    println("Client disconnected")
-//                }
-//            }
         }
 
         post("/login") {

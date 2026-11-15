@@ -51,7 +51,7 @@ class ServerTest {
         )
         configureSecurity(jwtService)
         val fileService = FileServiceImpl(rootPath = Path("/home"))
-        configureRouting(fileService, Gson(), jwtService)
+        configureRouting(fileService, jwtService)
     }
 
     @Test
