@@ -1,7 +1,6 @@
 package com.example.shared.models
 
-import java.nio.file.attribute.FileTime
-
+@net.jcip.annotations.Immutable
 data class FileItem(
     val name: String,
     val path: String,
