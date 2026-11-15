@@ -51,5 +51,5 @@ fun Application.module() {
     val fileService = FileServiceImpl(
         rootPath = Path(environment.config.propertyOrNull("storage.rootPath")?.getString() ?: "/")
     )
-    configureRouting(fileService, Gson(), jwtService)
+    configureRouting(fileService, jwtService)
 }
