@@ -10,9 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +59,11 @@ fun ManageScreen(
             TopAppBar(
                 title = {
                     Text(currentPath)
+                },
+                actions = {
+                    IconButton(onClick = {viewModel.setFilter("")}) {
+                        Icon(Icons.Default.FilterAlt, "Filter")
+                    }
                 }
             )
         }
@@ -81,7 +90,10 @@ fun ManageScreen(
                 fileItem?.let { file ->
                     FileCard(
                         file = file,
-                        onClick = { viewModel.openDir(file.path) }
+                        onClick = {
+                            if (file.isDirectory)
+                                viewModel.openDir(file.path)
+                        }
                     )
                 }
             }

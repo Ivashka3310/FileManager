@@ -17,7 +17,11 @@ class FileServiceImpl(private val rootPath: Path): FileService {
     override suspend fun getFiles(
         relativePath: String,
         offset: Int,
-        limit: Int
+        limit: Int,
+        filter: String?,
+        extension: String?,
+        nameQuery: String?,
+        orderBy: String?
     ): List<FileItem> {
         val resolvedPath = rootPath.resolve(relativePath).normalize()
 
@@ -25,11 +29,17 @@ class FileServiceImpl(private val rootPath: Path): FileService {
             throw SecurityException("Access denied: path is outside root directory! Your path is: $resolvedPath")
         }
 
+        val filterPredicate = PathFilterParser.parse(filter, hideDotFilesByDefault = true)
+
         return withContext(Dispatchers.IO) {
             Files.list(resolvedPath)
         }.use { stream ->
             stream
-                .sorted(Comparator.comparing { it.fileName.toString().lowercase() })
+                .filter(filterPredicate)
+                .sorted(
+                    compareByDescending<Path> { it.isDirectory() }
+                        .thenBy { it.fileName.toString().lowercase() }
+                )
                 .skip(offset.toLong())
                 .limit(limit.toLong())
                 .map { path ->

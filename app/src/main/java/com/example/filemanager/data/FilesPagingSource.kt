@@ -8,7 +8,8 @@ import kotlin.math.max
 
 class FilesPagingSource(
     private val fileRepository: FileRepository,
-    private val currentPath: String
+    private val currentPath: String,
+    private val filter: String? = null
 ) : PagingSource<Int, FileItem>() {
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, FileItem> {
         return try {
@@ -18,7 +19,8 @@ class FilesPagingSource(
             val files = fileRepository.getFiles(
                 path = currentPath,
                 offset = currentOffset,
-                limit = pageSize
+                limit = pageSize,
+                filter = filter
             )
 
             LoadResult.Page(

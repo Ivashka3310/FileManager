@@ -10,6 +10,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.authentication
+import io.ktor.server.http.content.file
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respond
@@ -40,7 +41,11 @@ fun Application.configureRouting(
                     val files = fileService.getFiles(
                         relativePath = fileListRequest.path,
                         offset = fileListRequest.offset,
-                        limit = fileListRequest.limit
+                        limit = fileListRequest.limit,
+                        filter = fileListRequest.filter,
+                        extension = fileListRequest.extension,
+                        nameQuery = fileListRequest.nameQuery,
+                        orderBy = fileListRequest.orderBy
                     )
                     call.respond(HttpStatusCode.OK, files)
                 } catch (e: SecurityException) {

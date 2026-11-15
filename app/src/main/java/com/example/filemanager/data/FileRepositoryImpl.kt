@@ -56,7 +56,8 @@ class FileRepositoryImpl(
     override suspend fun getFiles(
         path: String,
         offset: Int,
-        limit: Int
+        limit: Int,
+        filter: String?
     ): List<FileItem> {
         val currentUrl = sessionStorage.url.first()
         val currentToken = sessionStorage.accessToken.first()
@@ -68,7 +69,14 @@ class FileRepositoryImpl(
         val response = client.get("$currentUrl/files/list") {
             header(HttpHeaders.Authorization, "Bearer $currentToken")
             contentType(ContentType.Application.Json)
-            setBody(FileListRequest(path, offset, limit))
+            setBody(
+                FileListRequest(
+                    path = path,
+                    offset = offset,
+                    limit = limit,
+                    filter = filter
+                )
+            )
         }
 
         return when(response.status) {

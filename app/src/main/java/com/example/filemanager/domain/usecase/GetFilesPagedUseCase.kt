@@ -9,7 +9,7 @@ import com.example.shared.models.FileItem
 import kotlinx.coroutines.flow.Flow
 
 class GetFilesPagedUseCase(private val fileRepository: FileRepository) {
-    operator fun invoke(currentPath: String): Flow<PagingData<FileItem>> = Pager(
+    operator fun invoke(currentPath: String, filter: String? = null): Flow<PagingData<FileItem>> = Pager(
         config = PagingConfig(
             pageSize = 20,
             initialLoadSize = 20,
@@ -19,7 +19,8 @@ class GetFilesPagedUseCase(private val fileRepository: FileRepository) {
         pagingSourceFactory = {
             FilesPagingSource(
                 fileRepository = fileRepository,
-                currentPath = currentPath
+                currentPath = currentPath,
+                filter = filter
             )
         }
     ).flow

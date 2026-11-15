@@ -5,6 +5,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface FileRepository {
     suspend fun connectViaQrData(qrData: String): Result<Unit>
-    suspend fun getFiles(path: String, offset: Int, limit: Int): List<FileItem>
+    suspend fun getFiles(path: String, offset: Int, limit: Int, filter: String? = null): List<FileItem>
     suspend fun removeFile(relativePath: String): Flow<String>
 }
