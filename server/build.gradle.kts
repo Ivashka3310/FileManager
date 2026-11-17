@@ -24,13 +24,19 @@ dependencies {
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.callLogging)
     implementation(libs.ktor.server.config.yaml)
-    implementation(libs.ktor.server.websockets)
+    implementation(libs.ktor.server.status.pages)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)
+    testImplementation(libs.junit.jupiter)
 
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.ktor.client.websockets)
     implementation(libs.ktor.client.content.negotiation)
+
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

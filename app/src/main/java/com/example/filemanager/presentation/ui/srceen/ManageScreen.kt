@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material3.Button
@@ -37,6 +38,8 @@ import androidx.paging.compose.itemKey
 import com.example.filemanager.presentation.ui.component.FileCard
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.shared.models.FileItem
+import com.example.filemanager.domain.DisksUiState
+import com.example.filemanager.presentation.ui.component.DiskCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +48,12 @@ fun ManageScreen(
 ) {
     val messages by viewModel.uiState.collectAsState()
     val currentPath by viewModel.currentPath.collectAsState()
-    val lazyPagingItems: LazyPagingItems<FileItem> = viewModel.filesFlow.collectAsLazyPagingItems()
+    val disksState by viewModel.disks.collectAsState()
+
+    // Paging items подключаем только когда мы не на экране дисков
+    val lazyPagingItems: LazyPagingItems<FileItem>? = if (currentPath != null) {
+        viewModel.filesFlow.collectAsLazyPagingItems()
+    } else null
 
     val context = LocalContext.current
 
@@ -58,11 +66,15 @@ fun ManageScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(currentPath)
+                    // Если currentPath == null, показываем заголовок "Диски", иначе - текущий путь
+                    Text(currentPath ?: "Диски")
                 },
                 actions = {
-                    IconButton(onClick = {viewModel.setFilter("")}) {
-                        Icon(Icons.Default.FilterAlt, "Filter")
+                    // Кнопка фильтра имеет смысл только внутри директории
+                    if (currentPath != null) {
+                        IconButton(onClick = { viewModel.setFilter("") }) {
+                            Icon(Icons.Default.FilterAlt, "Filter")
+                        }
                     }
                 }
             )
@@ -74,70 +86,92 @@ fun ManageScreen(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(
-                count = lazyPagingItems.itemCount,
-                key = lazyPagingItems.itemKey { it.path }
-            ) { index ->
-                val fileItem = lazyPagingItems[index]
-
-                fileItem?.let { file ->
-                    FileCard(
-                        file = file,
-                        onClick = {
-                            if (file.isDirectory)
-                                viewModel.openDir(file.path)
-                        }
-                    )
-                }
-            }
-
-            if (lazyPagingItems.loadState.append is LoadState.Loading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+        if (currentPath == null) { // ЭКРАН ДИСКОВ
+            when (val state = disksState) {
+                is DisksUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
+                is DisksUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(state.message, color = MaterialTheme.colorScheme.error)
+                            Button(onClick = { viewModel.loadDisks() }) {
+                                Text("Повторить")
+                            }
+                        }
+                    }
+                }
+                is DisksUiState.Success -> {
+                    LazyColumn(
+                        modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(state.disks) { disk ->
+                            DiskCard(
+                                disk = disk,
+                                onClick = {
+                                    // При клике переходим в корень диска
+                                    viewModel.openDir(disk.mountPoint)
+                                }
+                            )
+                        }
+                    }
+                }
             }
-        }
-
-        if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
+        } else if (lazyPagingItems != null) { // ЭКРАН ФАЙЛОВ
+            LazyColumn(
+                modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                items(
+                    count = lazyPagingItems.itemCount,
+                    key = lazyPagingItems.itemKey { it.path }
+                ) { index ->
+                    val fileItem = lazyPagingItems[index]
+                    fileItem?.let { file ->
+                        FileCard(
+                            file = file,
+                            onClick = {
+                                if (file.isDirectory) viewModel.openDir(file.path)
+                            }
+                        )
+                    }
+                }
+
+                if (lazyPagingItems.loadState.append is LoadState.Loading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        }
+                    }
+                }
             }
-        }
 
-        val refreshState = lazyPagingItems.loadState.refresh
-        if (refreshState is LoadState.Error) {
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Ошибка загрузки: ${refreshState.error.localizedMessage ?: "Неизвестная ошибка"}",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    Button(onClick = { lazyPagingItems.retry() }) {
-                        Text("Повторить")
+            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
+                Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+            }
+
+            val refreshState = lazyPagingItems.loadState.refresh
+            if (refreshState is LoadState.Error) {
+                Box(
+                    modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Ошибка загрузки: ${refreshState.error.localizedMessage ?: "Неизвестная ошибка"}",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Button(onClick = { lazyPagingItems.retry() }) {
+                            Text("Повторить")
+                        }
                     }
                 }
             }

@@ -17,6 +17,7 @@ import com.example.filemanager.domain.FileRepository
 import com.example.filemanager.domain.SessionStorage
 import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
 import com.example.filemanager.domain.usecase.GetFilesPagedUseCase
+import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
 import com.example.filemanager.presentation.navigation.AppNavGraph
 import com.example.filemanager.presentation.theme.FileManagerTheme
 import com.example.filemanager.presentation.viewmodel.AuthViewModel
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
 
         val connectViaQrDataUseCase = ConnectViaQrDataUseCase(fileRepository)
         val getFilesPagedUseCase = GetFilesPagedUseCase(fileRepository)
+        val getLocalDisksUseCase = GetLocalDisksUseCase(fileRepository)
 
         val authViewModel: AuthViewModel by viewModels {
             viewModelFactory {
@@ -44,7 +46,12 @@ class MainActivity : ComponentActivity() {
 
         val manageViewModel: ManageViewModel by viewModels {
             viewModelFactory {
-                initializer { ManageViewModel(getFilesPagedUseCase) }
+                initializer {
+                    ManageViewModel(
+                        getFilesPagedUseCase = getFilesPagedUseCase,
+                        getLocalDisksUseCase = getLocalDisksUseCase
+                    )
+                }
             }
         }
 
