@@ -6,7 +6,10 @@ import kotlinx.coroutines.flow.Flow
 
 interface FileRepository {
     suspend fun connectViaQrData(qrData: String): Result<Unit>
-    suspend fun getFiles(path: String, offset: Int, limit: Int, filter: String? = null): List<FileItem>
-    suspend fun removeFile(relativePath: String): Flow<String>
     suspend fun getLocalDisks(): List<DiskInfo>
+    suspend fun getFiles(path: String, offset: Int, limit: Int, filter: String? = null): List<FileItem>
+    suspend fun createFile(path: String, isDirectory: Boolean): Boolean
+    suspend fun copyFile(sourcePath: String, destinationPath: String, overwrite: Boolean): Boolean
+    suspend fun renameFile(oldPath: String, newPath: String): Boolean
+    suspend fun deleteFile(path: String, recursive: Boolean): Boolean
 }

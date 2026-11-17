@@ -1,4 +1,4 @@
-package com.example.shared
+package com.example.shared.requests
 
 data class FileListRequest(
     val path: String,
@@ -7,5 +7,6 @@ data class FileListRequest(
     val filter: String? = null,
     val extension: String? = null,
     val nameQuery: String? = null,
-    val orderBy: String? = null
+    val orderBy: String? = null,
+
 )

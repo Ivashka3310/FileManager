@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.example.filemanager.domain.DisksUiState
+import com.example.filemanager.domain.usecase.CreateFileUseCase
+import com.example.filemanager.domain.usecase.DeleteFileUseCase
 import com.example.filemanager.domain.usecase.GetFilesPagedUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
+import com.example.filemanager.domain.usecase.RenameFileUseCase
 import com.example.shared.models.FileItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -15,12 +18,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
 class ManageViewModel(
     private val getFilesPagedUseCase: GetFilesPagedUseCase,
-    private val getLocalDisksUseCase: GetLocalDisksUseCase
+    private val getLocalDisksUseCase: GetLocalDisksUseCase,
+    private val createFileUseCase: CreateFileUseCase,
+    private val renameFileUseCase: RenameFileUseCase,
+    private val deleteFileUseCase: DeleteFileUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<List<String>>(emptyList())
     val uiState = _uiState.asStateFlow()
@@ -83,5 +90,41 @@ class ManageViewModel(
         } else {
             _currentFilter.value = null
         }
+    }
+
+    fun createFile(name: String, isDirectory: Boolean) {
+        val currentDir = currentPath.value ?: return
+        val cleanDir = currentDir.trim('/')
+        val newPath = if (currentDir.isEmpty()) name else "$cleanDir/$name"
+
+        viewModelScope.launch {
+            runCatching { createFileUseCase(newPath, isDirectory) }
+                .onSuccess { showMessage(if (isDirectory) "Папка создана" else "Файл создан") }
+                .onFailure { showMessage(it.message ?: "Ошибка создания") }
+        }
+    }
+
+    fun renameFile(oldPath: String, newName: String) {
+        val parentDir = oldPath.substringBeforeLast('/', "")
+        val cleanParent = parentDir.trim('/')
+        val newPath = if (parentDir.isEmpty()) newName else "$cleanParent/$newName"
+
+        viewModelScope.launch {
+            runCatching { renameFileUseCase(oldPath, newPath) }
+                .onSuccess { showMessage("Переименовано") }
+                .onFailure { showMessage(it.message ?: "Ошибка переименования") }
+        }
+    }
+
+    fun deleteFile(path: String) {
+        viewModelScope.launch {
+            runCatching { deleteFileUseCase(path, recursive = true) }
+                .onSuccess { showMessage("Удалено") }
+                .onFailure { showMessage(it.message ?: "Ошибка удаления") }
+        }
+    }
+
+    private fun showMessage(msg: String) {
+        _uiState.update { it + msg }
     }
 }

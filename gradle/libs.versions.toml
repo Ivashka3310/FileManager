@@ -25,6 +25,7 @@ cameraCore = "1.6.2"
 playServicesMlkitBarcodeScanning = "18.3.1"
 jcipAnnotations = "1.0"
 lifecycleViewmodelKtx = "2.11.0"
+ui = "1.12.1"
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }
@@ -82,6 +83,7 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 play-services-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "playServicesMlkitBarcodeScanning" }
 jcip-annotations = { group = "net.jcip", name = "jcip-annotations", version.ref = "jcipAnnotations" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 
 [plugins]
 ktor = {id = "io.ktor.plugin", version.ref = "ktor" }
