@@ -142,7 +142,6 @@ class FileRepositoryImpl(
         return response.status == HttpStatusCode.NoContent
     }
 
-    // Вспомогательные методы для избежания дублирования
     private suspend fun getSession(): Pair<String, String> {
         val url = sessionStorage.url.first()
         val token = sessionStorage.accessToken.first()

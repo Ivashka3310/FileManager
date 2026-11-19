@@ -1,4 +1,4 @@
-package com.example.filemanager.presentation.ui.component
+package com.example.filemanager.presentation.ui.component.dialogs
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

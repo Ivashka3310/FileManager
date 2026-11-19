@@ -1,5 +1,6 @@
 package com.example.filemanager.presentation.ui.component
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.shared.models.DiskInfo
 
@@ -107,6 +109,7 @@ fun DiskCard(
     }
 }
 
+@SuppressLint("DefaultLocale")
 private fun formatBytes(bytes: Long): String {
     if (bytes <= 0) return "0 Б"
     val kb = bytes / 1024.0
@@ -121,4 +124,22 @@ private fun formatBytes(bytes: Long): String {
         kb >= 1.0 -> String.format("%.1f КБ", kb)
         else -> "$bytes Б"
     }
+}
+
+@Preview
+@Composable
+fun DiskCardPreview() {
+    val disk = DiskInfo(
+        mountPoint = "/example/disk",
+        device = "/dev",
+        fsType = "exf4",
+        fsName = "exf4",
+        totalSpace = 1000000000,
+        usableSpace = 730000000,
+        unallocatedSpace = 260000000,
+        isReadOnly = false,
+        options = emptyList()
+    )
+
+    DiskCard(disk) { }
 }

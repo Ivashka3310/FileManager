@@ -1,17 +1,20 @@
 package com.example.server.data
 
 import com.example.server.domain.FileService
-import com.example.shared.requests.FileListRequest
 import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
+import com.example.shared.requests.FileListRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Locale
 import kotlin.io.path.fileSize
 import kotlin.io.path.getAttribute
@@ -141,15 +144,15 @@ class FileServiceImpl(rootPath: Path) : FileService {
         relativePath: String,
         isDirectory: Boolean
     ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val target = resolveForCreate(relativePath)
+        val target = resolveForCreate(relativePath)
 
-            if (isDirectory) {
-                Files.createDirectory(target)
-            } else {
-                Files.createFile(target)
-            }
+        try {
+            if (isDirectory) Files.createDirectory(target) else Files.createFile(target)
             true
+        } catch (_: FileAlreadyExistsException) {
+            false
+        } catch (e: NoSuchFileException) {
+            throw e
         } catch (_: IOException) {
             false
         }
@@ -160,28 +163,29 @@ class FileServiceImpl(rootPath: Path) : FileService {
         destinationPath: String,
         overwrite: Boolean
     ): Boolean = withContext(Dispatchers.IO) {
+        val source = resolveExisting(sourcePath)
+        val target = resolveForCreate(destinationPath)
+
         try {
-            val source = resolveExisting(sourcePath)
-            val target = resolveExisting(destinationPath)
 
             if (source.isDirectory() && target.startsWith(source)) {
                 throw IllegalArgumentException("Cannot copy a directory into itself")
             }
 
             if (source.isDirectory()) {
-                source.toFile().copyRecursively(target.toFile(), overwrite = overwrite)
+                val success = source.toFile().copyRecursively(target.toFile(), overwrite = overwrite)
+                if (!success) throw IOException("Failed to copy directory")
             } else {
-                val options = if (overwrite) {
-                    arrayOf(StandardCopyOption.REPLACE_EXISTING)
-                } else {
-                    emptyArray()
-                }
+                val options = if (overwrite) arrayOf(StandardCopyOption.REPLACE_EXISTING) else emptyArray()
                 Files.copy(source, target, *options)
             }
             true
+        } catch (e: FileAlreadyExistsException) {
+            false
         } catch (_: SecurityException) {
             throw SecurityException("Action denied")
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            if (e is NoSuchFileException) throw e
             false
         }
     }
@@ -212,23 +216,31 @@ class FileServiceImpl(rootPath: Path) : FileService {
         }
     }
 
-    override suspend fun deleteFile(
-        relativePath: String,
-        recursive: Boolean
-    ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val resolved = resolveExisting(relativePath)
+    override suspend fun deleteFile(relativePath: String, recursive: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val resolved = resolveExisting(relativePath)
 
-            if (resolved.isDirectory() && !recursive) {
-                Files.delete(resolved)
-            } else if (resolved.isDirectory() && recursive) {
-                resolved.toFile().deleteRecursively()
+        try {
+            if (resolved.isDirectory()) {
+                if (!recursive) {
+                    Files.delete(resolved)
+                } else {
+                    Files.walkFileTree(resolved, object : SimpleFileVisitor<Path>() {
+                        override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                            Files.delete(file)
+                            return FileVisitResult.CONTINUE
+                        }
+
+                        override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                            if (exc != null) throw exc
+                            Files.delete(dir)
+                            return FileVisitResult.CONTINUE
+                        }
+                    })
+                }
             } else {
                 Files.deleteIfExists(resolved)
             }
             true
-        } catch (_: SecurityException) {
-            throw SecurityException("Action denied")
         } catch (_: IOException) {
             false
         }
@@ -248,13 +260,9 @@ class FileServiceImpl(rootPath: Path) : FileService {
     }
     private fun resolveExisting(relativePath: String): Path {
         val path = Path.of(relativePath)
+        require(!path.isAbsolute) { "Relative path expected, got absolute: $relativePath" }
 
-        val candidate = if (path.isAbsolute) {
-            path.normalize()
-        } else {
-            canonicalRoot.resolve(path).normalize()
-        }
-
+        val candidate = canonicalRoot.resolve(path).normalize()
         if (!candidate.startsWith(canonicalRoot)) {
             throw SecurityException("Access denied: path escapes root: $relativePath")
         }

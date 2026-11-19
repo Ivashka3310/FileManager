@@ -2,27 +2,14 @@ package com.example.filemanager.presentation.ui.srceen
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,24 +20,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
-import com.example.filemanager.presentation.ui.component.FileCard
+import com.example.filemanager.presentation.ui.component.dialogs.CreateDialog
+import com.example.filemanager.presentation.ui.component.dialogs.DeleteDialog
+import com.example.filemanager.presentation.ui.component.DisksContent
+import com.example.filemanager.presentation.ui.component.FilesContent
+import com.example.filemanager.presentation.ui.component.dialogs.RenameDialog
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.shared.models.FileItem
-import com.example.filemanager.domain.DisksUiState
-import com.example.filemanager.presentation.ui.component.CreateDialog
-import com.example.filemanager.presentation.ui.component.DeleteDialog
-import com.example.filemanager.presentation.ui.component.DiskCard
-import com.example.filemanager.presentation.ui.component.RenameDialog
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageScreen(
@@ -71,17 +52,13 @@ fun ManageScreen(
     var menuTarget by remember { mutableStateOf<FileItem?>(null) }
     var deleteTarget by remember { mutableStateOf<FileItem?>(null) }
 
-    BackHandler(enabled = true) {
-        viewModel.goBack()
-    }
+    BackHandler(enabled = true) { viewModel.goBack() }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = {
-                    Text(currentPath ?: "Диски")
-                },
+                title = { Text(currentPath ?: "Диски") },
                 actions = {
                     if (currentPath != null) {
                         IconButton(onClick = { viewModel.setFilter("") }) {
@@ -102,6 +79,7 @@ fun ManageScreen(
         LaunchedEffect(messages) {
             if (messages.isNotEmpty()) {
                 Toast.makeText(context, messages.last(), Toast.LENGTH_SHORT).show()
+                viewModel.clearMessages()
             }
         }
 
@@ -111,146 +89,58 @@ fun ManageScreen(
                 onConfirm = { name, isDir ->
                     viewModel.createFile(name, isDir)
                     showCreateDialog = false
-                    lazyPagingItems?.refresh()
                 }
             )
         }
 
-        if (currentPath == null) { // ЭКРАН ДИСКОВ
-            when (val state = disksState) {
-                is DisksUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+        if (currentPath == null) {
+            DisksContent(
+                state = disksState,
+                innerPadding = innerPadding,
+                onRetry = viewModel::loadDisks,
+                onDiskClick = viewModel::openDisk
+            )
+        } else if (lazyPagingItems != null) {
+            FilesContent(
+                items = lazyPagingItems,
+                innerPadding = innerPadding,
+                menuTarget = menuTarget,
+                onMenuTargetChange = { menuTarget = it },
+                onFileClick = { file ->
+                    if (file.isDirectory) viewModel.openDir(file.path)
+                },
+                onFileLongClick = { menuTarget = it },
+                onRenameClick = { file ->
+                    renameTarget = file
+                    menuTarget = null
+                },
+                onDeleteClick = { file ->
+                    deleteTarget = file
+                    menuTarget = null
                 }
-                is DisksUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(state.message, color = MaterialTheme.colorScheme.error)
-                            Button(onClick = { viewModel.loadDisks() }) {
-                                Text("Повторить")
-                            }
-                        }
-                    }
-                }
-                is DisksUiState.Success -> {
-                    LazyColumn(
-                        modifier = Modifier.padding(innerPadding).fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(state.disks) { disk ->
-                            DiskCard(
-                                disk = disk,
-                                onClick = { viewModel.openDir(disk.mountPoint) }
-                            )
-                        }
-                    }
-                }
-            }
-        } else if (lazyPagingItems != null) { // ЭКРАН ФАЙЛОВ
-            LazyColumn(
-                modifier = Modifier.padding(innerPadding).fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(
-                    count = lazyPagingItems.itemCount,
-                    key = lazyPagingItems.itemKey { it.path }
-                ) { index ->
-                    val fileItem = lazyPagingItems[index]
-                    fileItem?.let { file ->
-                        FileCard(
-                            file = file,
-                            onClick = {
-                                if (file.isDirectory) viewModel.openDir(file.path)
-                            },
-                            onLongClick = {
-                                menuTarget = file
-                            }
-                        )
+            )
+        }
 
-                        if (menuTarget?.path == file.path) {
-                            DropdownMenu(
-                                expanded = true,
-                                onDismissRequest = { menuTarget = null }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Переименовать") },
-                                    onClick = {
-                                        renameTarget = file
-                                        menuTarget = null
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
-                                    onClick = {
-                                        deleteTarget = file
-                                        menuTarget = null
-                                    }
-                                )
-                            }
-                        }
-                    }
+        renameTarget?.let { file ->
+            RenameDialog(
+                oldName = file.name,
+                onDismiss = { renameTarget = null },
+                onConfirm = { newName ->
+                    viewModel.renameFile(file.path, newName)
+                    renameTarget = null
                 }
+            )
+        }
 
-                if (lazyPagingItems.loadState.append is LoadState.Loading) {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                        }
-                    }
+        deleteTarget?.let { file ->
+            DeleteDialog(
+                file = file,
+                onDismiss = { deleteTarget = null },
+                onConfirm = {
+                    viewModel.deleteFile(file.path)
+                    deleteTarget = null
                 }
-            }
-
-            if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-                Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-            }
-
-            val refreshState = lazyPagingItems.loadState.refresh
-            if (refreshState is LoadState.Error) {
-                Box(
-                    modifier = Modifier.padding(innerPadding).fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Ошибка загрузки: ${refreshState.error.localizedMessage ?: "Неизвестная ошибка"}",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                        Button(onClick = { lazyPagingItems.retry() }) {
-                            Text("Повторить")
-                        }
-                    }
-                }
-            }
-
-            renameTarget?.let { file ->
-                RenameDialog(
-                    oldName = file.name,
-                    onDismiss = { renameTarget = null },
-                    onConfirm = { newName ->
-                        viewModel.renameFile(file.path, newName)
-                        renameTarget = null
-                        lazyPagingItems.refresh()
-                    }
-                )
-            }
-
-            deleteTarget?.let { file ->
-                DeleteDialog(
-                    file = file,
-                    onDismiss = { deleteTarget = null },
-                    onConfirm = {
-                        viewModel.deleteFile(file.path)
-                        deleteTarget = null
-                        lazyPagingItems.refresh()
-                    }
-                )
-            }
+            )
         }
     }
 }
