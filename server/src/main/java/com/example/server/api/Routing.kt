@@ -7,6 +7,7 @@ import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
 import com.example.shared.requests.FileListRequest
 import com.example.shared.requests.RenameFileRequest
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -15,6 +16,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -98,15 +100,33 @@ fun Application.configureRouting(
             }
 
             delete("/files/delete") {
-                val path = call.request.queryParameters["path"]
+                val relativePath = call.request.queryParameters["path"]
                     ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing path"))
                 val recursive = call.request.queryParameters["recursive"]?.toBoolean() ?: false
 
-                val deleted = fileService.deleteFile(path, recursive)
+                val deleted = fileService.deleteFile(relativePath, recursive)
                 if (deleted) {
                     call.respond(HttpStatusCode.NoContent)
                 } else {
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Delete failed. Directory might not be empty."))
+                }
+            }
+
+            get("/files/content/json") {
+                val relativePath = call.request.queryParameters["path"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing path"))
+
+                try {
+                    val content = fileService.getJsonContent(relativePath)
+                    call.respondText(content, ContentType.Application.Json)
+                } catch (e: SecurityException) {
+                    call.respond(HttpStatusCode.Forbidden, mapOf("error" to (e.message ?: "Access denied")))
+                } catch (_: NoSuchFileException) {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "File not found"))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Invalid path")))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
                 }
             }
         }

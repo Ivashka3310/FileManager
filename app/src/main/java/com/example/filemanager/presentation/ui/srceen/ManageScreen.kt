@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -35,7 +36,8 @@ import com.example.shared.models.FileItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageScreen(
-    viewModel: ManageViewModel = viewModel()
+    viewModel: ManageViewModel = viewModel(),
+    openJson: (String) -> Unit
 ) {
     val messages by viewModel.uiState.collectAsState()
     val currentPath by viewModel.currentPath.collectAsState()
@@ -108,6 +110,7 @@ fun ManageScreen(
                 onMenuTargetChange = { menuTarget = it },
                 onFileClick = { file ->
                     if (file.isDirectory) viewModel.openDir(file.path)
+                    else if (file.path.endsWith(".json")) openJson(file.path)
                 },
                 onFileLongClick = { menuTarget = it },
                 onRenameClick = { file ->

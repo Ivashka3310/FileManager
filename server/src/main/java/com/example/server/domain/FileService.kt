@@ -11,4 +11,5 @@ interface FileService {
     suspend fun copyFile(sourcePath: String, destinationPath: String, overwrite: Boolean): Boolean
     suspend fun renameFile(oldPath: String, newPath: String): Boolean
     suspend fun deleteFile(relativePath: String, recursive: Boolean): Boolean
+    suspend fun getJsonContent(relativePath: String): String
 }

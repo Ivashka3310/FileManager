@@ -16,12 +16,14 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.http.contentType
 import java.io.File
+import kotlin.text.get
 
 class FileRemoteDataSourceImpl(
     private val client: HttpClient
@@ -127,6 +129,26 @@ class FileRemoteDataSourceImpl(
             parameter("recursive", recursive.toString())
         }
         return response.status == HttpStatusCode.NoContent
+    }
+
+    override suspend fun getJsonFileContent(
+        url: String,
+        token: String,
+        path: String
+    ): String {
+        val response = client.get("$url/files/content/json") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            parameter("path", path)
+        }
+
+        return when (response.status) {
+            HttpStatusCode.OK -> response.bodyAsText()
+            HttpStatusCode.Forbidden -> throw SecurityException("Access denied")
+            HttpStatusCode.NotFound -> throw NoSuchFileException(File(path))
+            HttpStatusCode.BadRequest -> throw IllegalArgumentException("Invalid path or file")
+            HttpStatusCode.PayloadTooLarge -> throw IllegalArgumentException("File too large")
+            else -> throw Exception("Server error: ${response.status}")
+        }
     }
 
     private suspend fun handleActionResponse(response: HttpResponse): Boolean {

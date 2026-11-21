@@ -14,4 +14,5 @@ interface FileRepository {
     suspend fun renameFile(oldPath: String, newPath: String): Boolean
     suspend fun deleteFile(path: String, recursive: Boolean): Boolean
     fun getPagerFiles(path: String, filter: String? = null): Flow<PagingData<FileItem>>
+    suspend fun getJsonFileContent(path: String): String
 }

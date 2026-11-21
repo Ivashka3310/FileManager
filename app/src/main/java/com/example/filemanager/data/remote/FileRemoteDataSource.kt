@@ -44,4 +44,10 @@ interface FileRemoteDataSource {
         path: String,
         recursive: Boolean
     ): Boolean
+
+    suspend fun getJsonFileContent(
+        url: String,
+        token: String,
+        path: String
+    ): String
 }

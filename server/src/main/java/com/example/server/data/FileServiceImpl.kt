@@ -4,6 +4,8 @@ import com.example.server.domain.FileService
 import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
 import com.example.shared.requests.FileListRequest
+import com.google.gson.JsonParser
+import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -244,6 +246,30 @@ class FileServiceImpl(rootPath: Path) : FileService {
         } catch (_: IOException) {
             false
         }
+    }
+
+    @Suppress("CheckResult")
+    override suspend fun getJsonContent(relativePath: String): String = withContext(Dispatchers.IO) {
+        val resolved = resolveExisting(relativePath)
+
+        if (!Files.isRegularFile(resolved)) {
+            throw IllegalArgumentException("Not a file: $relativePath")
+        }
+
+        val size = Files.size(resolved)
+        if (size > 5 * 1024 * 1024) {
+            throw IllegalArgumentException("File too large to display")
+        }
+
+        val content = Files.readString(resolved)
+
+        try {
+            JsonParser.parseString(content)
+        } catch (e: JsonSyntaxException) {
+            throw IllegalArgumentException("Invalid JSON format", e)
+        }
+
+        content
     }
 
     private fun resolveForCreate(relativePath: String): Path {

@@ -24,12 +24,14 @@ import com.example.filemanager.domain.SessionStorage
 import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.DeleteFileUseCase
+import com.example.filemanager.domain.usecase.GetJsonFileContentUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
 import com.example.filemanager.domain.usecase.RenameFileUseCase
 import com.example.filemanager.presentation.navigation.AppNavGraph
 import com.example.filemanager.presentation.theme.FileManagerTheme
 import com.example.filemanager.presentation.viewmodel.AuthViewModel
+import com.example.filemanager.presentation.viewmodel.JsonViewerViewModel
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 
 class MainActivity : ComponentActivity() {
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
         val createFileUseCase = CreateFileUseCase(fileRepository)
         val renameFileUseCase = RenameFileUseCase(fileRepository)
         val deleteFileUseCase = DeleteFileUseCase(fileRepository)
+        val getJsonFileContentUseCase = GetJsonFileContentUseCase(fileRepository)
 
         val authViewModel: AuthViewModel by viewModels {
             viewModelFactory {
@@ -79,6 +82,12 @@ class MainActivity : ComponentActivity() {
                         deleteFileUseCase = deleteFileUseCase
                     )
                 }
+            }
+        }
+
+        val jsonViewerViewModel: JsonViewerViewModel by viewModels {
+            viewModelFactory {
+                initializer { JsonViewerViewModel(getJsonFileContentUseCase) }
             }
         }
 
@@ -108,7 +117,8 @@ class MainActivity : ComponentActivity() {
                 AppNavGraph(
                     navController,
                     authViewModel,
-                    manageViewModel
+                    manageViewModel,
+                    jsonViewerViewModel
                 )
             }
         }
