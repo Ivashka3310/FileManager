@@ -15,22 +15,28 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.logback.classic)
+
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.content.negotiation)
-    implementation(libs.logback.classic)
     implementation(libs.ktor.serialization.gson)
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.callLogging)
     implementation(libs.ktor.server.config.yaml)
-    implementation(libs.ktor.server.websockets)
+    implementation(libs.ktor.server.status.pages)
+    implementation(libs.ktor.client.content.negotiation)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)
+    testImplementation(libs.junit.jupiter)
 
     implementation(libs.kotlinx.coroutines.core)
 
-    implementation(libs.ktor.client.websockets)
-    implementation(libs.ktor.client.content.negotiation)
+
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
