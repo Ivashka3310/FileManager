@@ -13,10 +13,20 @@ import androidx.navigation.compose.rememberNavController
 import com.example.filemanager.data.FileRepositoryImpl
 import com.example.filemanager.data.KtorClient
 import com.example.filemanager.data.SessionStorageImpl
+import com.example.filemanager.data.local.FileDao
+import com.example.filemanager.data.local.FileDatabase
+import com.example.filemanager.data.local.FileLocalDataSource
+import com.example.filemanager.data.local.FileLocalMapper
+import com.example.filemanager.data.remote.FileRemoteDataSource
+import com.example.filemanager.data.remote.FileRemoteDataSourceImpl
 import com.example.filemanager.domain.FileRepository
 import com.example.filemanager.domain.SessionStorage
 import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
-import com.example.filemanager.domain.usecase.GetFilesPagedUseCase
+import com.example.filemanager.domain.usecase.CreateFileUseCase
+import com.example.filemanager.domain.usecase.DeleteFileUseCase
+import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
+import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
+import com.example.filemanager.domain.usecase.RenameFileUseCase
 import com.example.filemanager.presentation.navigation.AppNavGraph
 import com.example.filemanager.presentation.theme.FileManagerTheme
 import com.example.filemanager.presentation.viewmodel.AuthViewModel
@@ -26,15 +36,31 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         //enableEdgeToEdge()
-        
+
+        val fileRemoteDataSource: FileRemoteDataSource = FileRemoteDataSourceImpl(
+            client = KtorClient.client
+        )
+
+        val database = FileDatabase.getDatabase(applicationContext)
+        val dao: FileDao = database.fileDao()
+        val localMapper = FileLocalMapper()
+        val localDataSource = FileLocalDataSource(dao)
+
         val sessionStorage: SessionStorage = SessionStorageImpl(applicationContext)
+
         val fileRepository: FileRepository = FileRepositoryImpl(
-            client = KtorClient.client,
-            sessionStorage = sessionStorage
+            fileRemoteDataSource = fileRemoteDataSource,
+            localDataSource = localDataSource,
+            sessionStorage = sessionStorage,
+            mapper = localMapper
         )
 
         val connectViaQrDataUseCase = ConnectViaQrDataUseCase(fileRepository)
-        val getFilesPagedUseCase = GetFilesPagedUseCase(fileRepository)
+        val getPagedFilesUseCase = GetPagedFilesUseCase(fileRepository)
+        val getLocalDisksUseCase = GetLocalDisksUseCase(fileRepository)
+        val createFileUseCase = CreateFileUseCase(fileRepository)
+        val renameFileUseCase = RenameFileUseCase(fileRepository)
+        val deleteFileUseCase = DeleteFileUseCase(fileRepository)
 
         val authViewModel: AuthViewModel by viewModels {
             viewModelFactory {
@@ -44,7 +70,15 @@ class MainActivity : ComponentActivity() {
 
         val manageViewModel: ManageViewModel by viewModels {
             viewModelFactory {
-                initializer { ManageViewModel(getFilesPagedUseCase) }
+                initializer {
+                    ManageViewModel(
+                        getPagedFilesUseCase = getPagedFilesUseCase,
+                        getLocalDisksUseCase = getLocalDisksUseCase,
+                        createFileUseCase = createFileUseCase,
+                        renameFileUseCase = renameFileUseCase,
+                        deleteFileUseCase = deleteFileUseCase
+                    )
+                }
             }
         }
 
