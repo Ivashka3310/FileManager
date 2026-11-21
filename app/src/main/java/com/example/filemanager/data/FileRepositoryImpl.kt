@@ -1,7 +1,7 @@
 package com.example.filemanager.data
 
 import io.ktor.http.ContentType
-import com.example.filemanager.domain.FileRepository
+import com.example.filemanager.domain.FileRemoteDataSource
 import com.example.filemanager.domain.SessionStorage
 import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
@@ -23,17 +23,14 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import java.io.File
 import java.net.URI
 
-class FileRepositoryImpl(
+class FileRemoteDataSourceImpl(
     private val client: HttpClient,
     private val sessionStorage: SessionStorage
-) : FileRepository {
+) : FileRemoteDataSource {
 
     override suspend fun connectViaQrData(qrData: String): Result<Unit> = runCatching {
         val uri = URI(qrData)

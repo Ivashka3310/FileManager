@@ -2,9 +2,8 @@ package com.example.filemanager.domain
 
 import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
-import kotlinx.coroutines.flow.Flow
 
-interface FileRepository {
+interface FileRemoteDataSource {
     suspend fun connectViaQrData(qrData: String): Result<Unit>
     suspend fun getLocalDisks(): List<DiskInfo>
     suspend fun getFiles(path: String, offset: Int, limit: Int, filter: String? = null): List<FileItem>
