@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -41,6 +42,12 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
+    ksp(libs.androidx.room.compiler)
+
     implementation(libs.androidx.ui)
     implementation(libs.play.services.mlkit.barcode.scanning)
     implementation(libs.androidx.activity.compose)
@@ -59,9 +66,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.ktor.ktor.client.mock)
-    testImplementation(libs.kotlinx.coroutines.test) // Используйте версию, соответствующую вашим корутинам
+    testImplementation(libs.kotlinx.coroutines.test)
 
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

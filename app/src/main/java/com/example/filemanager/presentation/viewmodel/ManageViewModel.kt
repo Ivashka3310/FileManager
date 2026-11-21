@@ -7,7 +7,7 @@ import androidx.paging.cachedIn
 import com.example.filemanager.domain.DisksUiState
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.DeleteFileUseCase
-import com.example.filemanager.domain.usecase.GetFilesPagedUseCase
+import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
 import com.example.filemanager.domain.usecase.RenameFileUseCase
 import com.example.shared.models.DiskInfo
@@ -21,11 +21,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.nio.file.Path
-import java.nio.file.Paths
 
 class ManageViewModel(
-    private val getFilesPagedUseCase: GetFilesPagedUseCase,
+    private val getPagedFilesUseCase: GetPagedFilesUseCase,
     private val getLocalDisksUseCase: GetLocalDisksUseCase,
     private val createFileUseCase: CreateFileUseCase,
     private val renameFileUseCase: RenameFileUseCase,
@@ -77,7 +75,7 @@ class ManageViewModel(
         if (path == null) {
             flowOf(PagingData.empty())
         } else {
-            getFilesPagedUseCase(toRelative(path), filter)
+            getPagedFilesUseCase(toRelative(path), filter)
         }
     }.cachedIn(viewModelScope)
 
