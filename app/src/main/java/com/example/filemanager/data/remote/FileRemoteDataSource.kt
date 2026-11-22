@@ -50,4 +50,10 @@ interface FileRemoteDataSource {
         token: String,
         path: String
     ): String
+
+    suspend fun getXmlFileContent(
+        url: String,
+        token: String,
+        path: String
+    ): String
 }

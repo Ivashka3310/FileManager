@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -20,7 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.filemanager.domain.JsonUiState
+import com.example.filemanager.domain.FileUiState
 import com.example.filemanager.presentation.viewmodel.JsonViewerViewModel
 import com.sebastianneubauer.jsontree.JsonTree
 import com.sebastianneubauer.jsontree.TreeState
@@ -53,7 +52,7 @@ fun JsonViewerScreen(
         }
     ) { paddingValues ->
         when (val state = uiState) {
-            is JsonUiState.Loading -> {
+            is FileUiState.Loading -> {
                 Box(
                     modifier = Modifier
                         .padding(paddingValues)
@@ -63,7 +62,7 @@ fun JsonViewerScreen(
                     CircularProgressIndicator()
                 }
             }
-            is JsonUiState.Error -> {
+            is FileUiState.Error -> {
                 Box(
                     modifier = Modifier
                         .padding(paddingValues)
@@ -73,7 +72,7 @@ fun JsonViewerScreen(
                     Text("Ошибка: ${state.message}")
                 }
             }
-            is JsonUiState.Success -> {
+            is FileUiState.Success -> {
                 JsonTree(
                     json = state.content,
                     onLoading = { Text("Построение дерева...") },

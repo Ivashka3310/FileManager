@@ -28,7 +28,17 @@ fun CreateDialog(
         title = { Text("Создать") },
         text = {
             Column {
-                TextField(value = name, onValueChange = { name = it }, label = { Text("Имя") })
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Имя") },
+                    isError = (('/' in name) || (".." in name)),
+                    supportingText = {
+                        if (name.isBlank()) Text("Поле не может быть пустым")
+                        else if ('/' in name) Text("Недопустимый символ \"/\"")
+                        else if (".." in name) Text("В названии не может быть двух точек подряд")
+                    }
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isDir, onCheckedChange = { isDir = it })
                     Text("Папка")
@@ -36,7 +46,10 @@ fun CreateDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name, isDir) }) {
+            TextButton(
+                onClick = { onConfirm(name, isDir) },
+                enabled =  ((name.isNotBlank()) && ('/' !in name) && (".." !in name))
+            ) {
                 Text("Создать")
             }
         },

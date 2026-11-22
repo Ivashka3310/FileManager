@@ -129,6 +129,12 @@ class FileRepositoryImpl(
     override suspend fun getJsonFileContent(path: String): String {
         val (url, token) = getSession()
         return fileRemoteDataSource.getJsonFileContent(url, token, path)
+
+    }
+
+    override suspend fun getXmlFileContent(path: String): String {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.getXmlFileContent(url, token, path)
     }
     private suspend fun getSession(): Pair<String, String> {
         val url = sessionStorage.url.first()

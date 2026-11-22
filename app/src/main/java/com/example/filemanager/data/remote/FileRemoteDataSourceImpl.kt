@@ -151,6 +151,26 @@ class FileRemoteDataSourceImpl(
         }
     }
 
+    override suspend fun getXmlFileContent(
+        url: String,
+        token: String,
+        path: String
+    ): String {
+        val response = client.get("$url/files/content/xml") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            parameter("path", path)
+        }
+
+        return when (response.status) {
+            HttpStatusCode.OK -> response.bodyAsText()
+            HttpStatusCode.Forbidden -> throw SecurityException("Access denied")
+            HttpStatusCode.NotFound -> throw NoSuchFileException(File(path))
+            HttpStatusCode.BadRequest -> throw IllegalArgumentException("Invalid XML or path")
+            HttpStatusCode.PayloadTooLarge -> throw IllegalArgumentException("File too large")
+            else -> throw Exception("Server error: ${response.status}")
+        }
+    }
+
     private suspend fun handleActionResponse(response: HttpResponse): Boolean {
         return when (response.status) {
             HttpStatusCode.OK, HttpStatusCode.Created -> true

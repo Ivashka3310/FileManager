@@ -25,11 +25,24 @@ fun RenameDialog(
         title = { Text("Переименовать") },
         text = {
             Column {
-                TextField(value = name, onValueChange = { name = it }, label = { Text("Новое имя") })
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Новое имя") },
+                    isError = (('/' in name) || (".." in name)),
+                    supportingText = {
+                        if (name.isBlank()) Text("Поле не может быть пустым")
+                        else if ('/' in name) Text("Недопустимый символ \"/\"")
+                        else if (".." in name) Text("В названии не может быть двух точек подряд")
+                    }
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name) }) {
+            TextButton(
+                onClick = { onConfirm(name) },
+                enabled =  ((name.isNotBlank()) && ('/' !in name) && (".." !in name))
+            ) {
                 Text("Переименовать")
             }
         },

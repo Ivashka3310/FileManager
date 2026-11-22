@@ -12,4 +12,5 @@ interface FileService {
     suspend fun renameFile(oldPath: String, newPath: String): Boolean
     suspend fun deleteFile(relativePath: String, recursive: Boolean): Boolean
     suspend fun getJsonContent(relativePath: String): String
+    suspend fun getXmlContent(relativePath: String): String
 }

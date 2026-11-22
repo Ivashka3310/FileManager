@@ -8,8 +8,11 @@ import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.xml.sax.InputSource
+import org.xml.sax.SAXException
 import java.io.File
 import java.io.IOException
+import java.io.StringReader
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -18,6 +21,7 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.Locale
+import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.fileSize
 import kotlin.io.path.getAttribute
 import kotlin.io.path.getLastModifiedTime
@@ -267,6 +271,38 @@ class FileServiceImpl(rootPath: Path) : FileService {
             JsonParser.parseString(content)
         } catch (e: JsonSyntaxException) {
             throw IllegalArgumentException("Invalid JSON format", e)
+        }
+
+        content
+    }
+
+    override suspend fun getXmlContent(relativePath: String): String = withContext(Dispatchers.IO) {
+        val resolved = resolveExisting(relativePath)
+
+        if (!Files.isRegularFile(resolved)) {
+            throw IllegalArgumentException("Not a file: $relativePath")
+        }
+
+        val size = Files.size(resolved)
+        if (size > 5 * 1024 * 1024) {
+            throw IllegalArgumentException("File too large to display")
+        }
+
+        val content = Files.readString(resolved)
+
+        try {
+            val factory = DocumentBuilderFactory.newInstance()
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            factory.isXIncludeAware = false
+            factory.isExpandEntityReferences = false
+
+            val builder = factory.newDocumentBuilder()
+            builder.parse(InputSource(StringReader(content)))
+        } catch (e: SAXException) {
+            throw IllegalArgumentException("Invalid XML format", e)
         }
 
         content

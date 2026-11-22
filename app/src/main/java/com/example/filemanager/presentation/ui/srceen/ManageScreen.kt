@@ -37,7 +37,8 @@ import com.example.shared.models.FileItem
 @Composable
 fun ManageScreen(
     viewModel: ManageViewModel = viewModel(),
-    openJson: (String) -> Unit
+    openJson: (String) -> Unit,
+    openXml: (String) -> Unit
 ) {
     val messages by viewModel.uiState.collectAsState()
     val currentPath by viewModel.currentPath.collectAsState()
@@ -111,6 +112,7 @@ fun ManageScreen(
                 onFileClick = { file ->
                     if (file.isDirectory) viewModel.openDir(file.path)
                     else if (file.path.endsWith(".json")) openJson(file.path)
+                    else if (file.path.endsWith(".xml")) openXml(file.path)
                 },
                 onFileLongClick = { menuTarget = it },
                 onRenameClick = { file ->

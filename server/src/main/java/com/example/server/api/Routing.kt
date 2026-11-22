@@ -129,6 +129,20 @@ fun Application.configureRouting(
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
                 }
             }
+
+            get("/files/content/xml") {
+                val relativePath = call.request.queryParameters["path"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing path"))
+
+                try {
+                    val content = fileService.getXmlContent(relativePath)
+                    call.respondText(content, ContentType.Application.Xml)
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Invalid XML")))
+                } catch (e: Exception) {
+                    throw e
+                }
+            }
         }
 
         post("/login") {

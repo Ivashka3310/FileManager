@@ -27,12 +27,14 @@ import com.example.filemanager.domain.usecase.DeleteFileUseCase
 import com.example.filemanager.domain.usecase.GetJsonFileContentUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
+import com.example.filemanager.domain.usecase.GetXmlFileContentUseCase
 import com.example.filemanager.domain.usecase.RenameFileUseCase
 import com.example.filemanager.presentation.navigation.AppNavGraph
 import com.example.filemanager.presentation.theme.FileManagerTheme
 import com.example.filemanager.presentation.viewmodel.AuthViewModel
 import com.example.filemanager.presentation.viewmodel.JsonViewerViewModel
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
+import com.example.filemanager.presentation.viewmodel.XmlViewerViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,6 +66,7 @@ class MainActivity : ComponentActivity() {
         val renameFileUseCase = RenameFileUseCase(fileRepository)
         val deleteFileUseCase = DeleteFileUseCase(fileRepository)
         val getJsonFileContentUseCase = GetJsonFileContentUseCase(fileRepository)
+        val getXmlFileContentUseCase = GetXmlFileContentUseCase(fileRepository)
 
         val authViewModel: AuthViewModel by viewModels {
             viewModelFactory {
@@ -88,6 +91,12 @@ class MainActivity : ComponentActivity() {
         val jsonViewerViewModel: JsonViewerViewModel by viewModels {
             viewModelFactory {
                 initializer { JsonViewerViewModel(getJsonFileContentUseCase) }
+            }
+        }
+
+        val xmlViewerViewModel: XmlViewerViewModel by viewModels {
+            viewModelFactory {
+                initializer { XmlViewerViewModel(getXmlFileContentUseCase) }
             }
         }
 
@@ -118,7 +127,8 @@ class MainActivity : ComponentActivity() {
                     navController,
                     authViewModel,
                     manageViewModel,
-                    jsonViewerViewModel
+                    jsonViewerViewModel,
+                    xmlViewerViewModel
                 )
             }
         }
