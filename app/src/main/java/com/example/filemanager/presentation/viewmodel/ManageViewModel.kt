@@ -2,10 +2,12 @@ package com.example.filemanager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.example.filemanager.domain.DisksUiState
 import com.example.filemanager.domain.usecase.CreateFileUseCase
+import com.example.filemanager.domain.usecase.CreateZipUseCase
 import com.example.filemanager.domain.usecase.DeleteFileUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
@@ -27,7 +29,8 @@ class ManageViewModel(
     private val getLocalDisksUseCase: GetLocalDisksUseCase,
     private val createFileUseCase: CreateFileUseCase,
     private val renameFileUseCase: RenameFileUseCase,
-    private val deleteFileUseCase: DeleteFileUseCase
+    private val deleteFileUseCase: DeleteFileUseCase,
+    private val createZipUseCase: CreateZipUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<List<String>>(emptyList())
@@ -165,6 +168,23 @@ class ManageViewModel(
                     refreshTrigger.update { it + 1 }
                 }
                 .onFailure { showMessage(it.message ?: "Ошибка удаления") }
+        }
+    }
+
+    fun createZip(archiveName: String, relativePaths: List<String>) {
+        viewModelScope.launch {
+            runCatching {
+                createZipUseCase(
+                    archivePath = currentPath.value?.let { toRelative(it) } ?: return@launch,
+                    archiveName = archiveName,
+                    relativePaths = relativePaths.map { it.removePrefix("/") }
+                )
+            }.onSuccess {
+                showMessage("Архив создан")
+                refreshTrigger.update { it + 1 }
+            }.onFailure {
+                showMessage(it.message ?: "Ошибка создания")
+            }
         }
     }
 

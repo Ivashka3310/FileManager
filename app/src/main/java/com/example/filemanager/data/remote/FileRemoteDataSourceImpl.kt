@@ -4,6 +4,7 @@ import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
 import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
+import com.example.shared.requests.CreateZipRequest
 import com.example.shared.requests.RenameFileRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -169,6 +170,28 @@ class FileRemoteDataSourceImpl(
             HttpStatusCode.PayloadTooLarge -> throw IllegalArgumentException("File too large")
             else -> throw Exception("Server error: ${response.status}")
         }
+    }
+
+    override suspend fun createZip(
+        url: String,
+        token: String,
+        archivePath: String,
+        archiveName: String,
+        relativePaths: List<String>
+    ) {
+        val request = CreateZipRequest(
+            archivePath = archivePath,
+            archiveName = archiveName,
+            relativePaths = relativePaths
+        )
+
+        val response = client.post("$url/files/zip") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+
+        handleActionResponse(response)
     }
 
     private suspend fun handleActionResponse(response: HttpResponse): Boolean {

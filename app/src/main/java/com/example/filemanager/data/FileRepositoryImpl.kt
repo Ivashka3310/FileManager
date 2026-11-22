@@ -105,10 +105,10 @@ class FileRepositoryImpl(
     override fun getPagerFiles(path: String, filter: String?): Flow<PagingData<FileItem>> {
         return Pager(
             config = PagingConfig(
-                pageSize = 20,
-                initialLoadSize = 20,
-                prefetchDistance = 5,
-                enablePlaceholders = false
+                pageSize = 50,
+                initialLoadSize = 40,
+                prefetchDistance = 20,
+                enablePlaceholders = true
             ),
             remoteMediator = FileRemoteMediator(
                 sessionStorage = sessionStorage,
@@ -136,6 +136,22 @@ class FileRepositoryImpl(
         val (url, token) = getSession()
         return fileRemoteDataSource.getXmlFileContent(url, token, path)
     }
+
+    override suspend fun createZip(
+        archivePath: String,
+        archiveName: String,
+        relativePaths: List<String>
+    ) {
+        val (url, token) = getSession()
+        fileRemoteDataSource.createZip(
+            url = url,
+            token = token,
+            archivePath = archivePath,
+            archiveName = archiveName,
+            relativePaths = relativePaths
+        )
+    }
+
     private suspend fun getSession(): Pair<String, String> {
         val url = sessionStorage.url.first()
         val token = sessionStorage.accessToken.first()

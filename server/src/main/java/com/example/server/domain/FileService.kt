@@ -11,6 +11,12 @@ interface FileService {
     suspend fun copyFile(sourcePath: String, destinationPath: String, overwrite: Boolean): Boolean
     suspend fun renameFile(oldPath: String, newPath: String): Boolean
     suspend fun deleteFile(relativePath: String, recursive: Boolean): Boolean
-    suspend fun getJsonContent(relativePath: String): String
-    suspend fun getXmlContent(relativePath: String): String
+    suspend fun getJsonContent(relativePath: String, maxFileSize: Long = 5 * 1024 * 1024): String
+    suspend fun getXmlContent(relativePath: String, maxFileSize: Long = 5 * 1024 * 1024): String
+    suspend fun createZip(
+        relativePaths: List<String>,
+        targetZipRelativePath: String,
+        maxSingleFileSize: Long = 50 * 1024 * 1024,
+        maxTotalSize: Long = 200 * 1024 * 1024
+    )
 }

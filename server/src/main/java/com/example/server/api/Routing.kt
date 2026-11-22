@@ -5,6 +5,7 @@ import com.example.server.api.security.JwtService
 import com.example.server.domain.FileService
 import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
+import com.example.shared.requests.CreateZipRequest
 import com.example.shared.requests.FileListRequest
 import com.example.shared.requests.RenameFileRequest
 import io.ktor.http.ContentType
@@ -24,6 +25,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import org.slf4j.LoggerFactory
 import java.nio.file.NoSuchFileException
+import java.util.UUID
 
 private val logger = LoggerFactory.getLogger("Routing")
 
@@ -141,6 +143,34 @@ fun Application.configureRouting(
                     call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Invalid XML")))
                 } catch (e: Exception) {
                     throw e
+                }
+            }
+
+            post("/files/zip") {
+                val request = call.receive<CreateZipRequest>()
+
+                val safeName = request.archiveName
+                    .replace(Regex("[^a-zA-Zа-яА-Я0-9_-]"), "_")
+                    .take(50)
+                    .takeIf { it.isNotBlank() } ?: "archive_${UUID.randomUUID()}"
+
+                val targetZipRelativePath = "${request.archivePath}/$safeName.zip"
+
+                try {
+                    fileService.createZip(
+                        relativePaths = request.relativePaths,
+                        targetZipRelativePath = targetZipRelativePath
+                    )
+
+                    call.respond(
+                        status = HttpStatusCode.Created,
+                        message = mapOf("message" to "Created")
+                    )
+                } catch (e: IllegalArgumentException) {
+                    call.respond(
+                        status = HttpStatusCode.BadRequest,
+                        message = mapOf("error" to (e.message ?: "Invalid request"))
+                    )
                 }
             }
         }

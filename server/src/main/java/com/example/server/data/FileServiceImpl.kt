@@ -21,12 +21,17 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.fileSize
 import kotlin.io.path.getAttribute
 import kotlin.io.path.getLastModifiedTime
+import kotlin.io.path.inputStream
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.name
+import kotlin.io.path.outputStream
 
 class FileServiceImpl(rootPath: Path) : FileService {
 
@@ -253,7 +258,10 @@ class FileServiceImpl(rootPath: Path) : FileService {
     }
 
     @Suppress("CheckResult")
-    override suspend fun getJsonContent(relativePath: String): String = withContext(Dispatchers.IO) {
+    override suspend fun getJsonContent(
+        relativePath: String,
+        maxFileSize: Long
+    ): String = withContext(Dispatchers.IO) {
         val resolved = resolveExisting(relativePath)
 
         if (!Files.isRegularFile(resolved)) {
@@ -261,7 +269,7 @@ class FileServiceImpl(rootPath: Path) : FileService {
         }
 
         val size = Files.size(resolved)
-        if (size > 5 * 1024 * 1024) {
+        if (size > maxFileSize) {
             throw IllegalArgumentException("File too large to display")
         }
 
@@ -276,7 +284,10 @@ class FileServiceImpl(rootPath: Path) : FileService {
         content
     }
 
-    override suspend fun getXmlContent(relativePath: String): String = withContext(Dispatchers.IO) {
+    override suspend fun getXmlContent(
+        relativePath: String,
+        maxFileSize: Long
+    ): String = withContext(Dispatchers.IO) {
         val resolved = resolveExisting(relativePath)
 
         if (!Files.isRegularFile(resolved)) {
@@ -284,7 +295,7 @@ class FileServiceImpl(rootPath: Path) : FileService {
         }
 
         val size = Files.size(resolved)
-        if (size > 5 * 1024 * 1024) {
+        if (size > maxFileSize) {
             throw IllegalArgumentException("File too large to display")
         }
 
@@ -308,6 +319,75 @@ class FileServiceImpl(rootPath: Path) : FileService {
         content
     }
 
+    override suspend fun createZip(
+        relativePaths: List<String>,
+        targetZipRelativePath: String,
+        maxSingleFileSize: Long,
+        maxTotalSize: Long
+    ) = withContext(Dispatchers.IO) {
+        if (relativePaths.isEmpty()) {
+            throw IllegalArgumentException("File list cannot be empty")
+        }
+
+        var totalSize = 0L
+        val resolvedFiles = relativePaths.map { relativePath ->
+            val resolved = resolveExisting(relativePath)
+
+            if (!Files.isRegularFile(resolved)) {
+                throw IllegalArgumentException("Not a file: $relativePath")
+            }
+
+            val size = Files.size(resolved)
+            if (size > maxSingleFileSize) {
+                throw IllegalArgumentException("File too large to archive: $relativePath")
+            }
+
+            totalSize += size
+            if (totalSize > maxTotalSize) {
+                throw IllegalArgumentException("Total archive size limit exceeded")
+            }
+
+            resolved
+        }
+
+        val targetZip = resolveForCreate(targetZipRelativePath)
+        targetZip.parent?.let { Files.createDirectories(it) }
+
+        try {
+            ZipOutputStream(targetZip.outputStream().buffered()).use { zipOut ->
+                val usedNames = mutableSetOf<String>()
+
+                for (file in resolvedFiles) {
+                    val entryName = getUniqueEntryName(file.name, usedNames)
+                    zipOut.putNextEntry(ZipEntry(entryName))
+
+                    file.inputStream().buffered().use { input ->
+                        input.copyTo(zipOut)
+                    }
+
+                    zipOut.closeEntry()
+                }
+            }
+        } catch (e: Exception) {
+            Files.deleteIfExists(targetZip)
+            throw e
+        }
+    }
+
+    private fun getUniqueEntryName(originalName: String, usedNames: MutableSet<String>): String {
+        var uniqueName = originalName
+        var counter = 1
+        while (!usedNames.add(uniqueName)) {
+            val dotIndex = originalName.lastIndexOf('.')
+            uniqueName = if (dotIndex != -1) {
+                "${originalName.substring(0, dotIndex)}($counter)${originalName.substring(dotIndex)}"
+            } else {
+                "$originalName($counter)"
+            }
+            counter++
+        }
+        return uniqueName
+    }
     private fun resolveForCreate(relativePath: String): Path {
         val rel = Path.of(relativePath)
         require(!rel.isAbsolute) { "Relative path expected, got absolute: $relativePath" }

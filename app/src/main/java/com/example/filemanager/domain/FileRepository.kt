@@ -16,4 +16,9 @@ interface FileRepository {
     fun getPagerFiles(path: String, filter: String? = null): Flow<PagingData<FileItem>>
     suspend fun getJsonFileContent(path: String): String
     suspend fun getXmlFileContent(path: String): String
+    suspend fun createZip(
+        archivePath: String,
+        archiveName: String,
+        relativePaths: List<String>
+    )
 }

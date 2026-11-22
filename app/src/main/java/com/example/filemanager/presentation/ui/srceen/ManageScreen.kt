@@ -5,8 +5,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -19,7 +22,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +35,7 @@ import com.example.filemanager.presentation.ui.component.dialogs.CreateDialog
 import com.example.filemanager.presentation.ui.component.dialogs.DeleteDialog
 import com.example.filemanager.presentation.ui.component.DisksContent
 import com.example.filemanager.presentation.ui.component.FilesContent
+import com.example.filemanager.presentation.ui.component.dialogs.CreateZipDialog
 import com.example.filemanager.presentation.ui.component.dialogs.RenameDialog
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.shared.models.FileItem
@@ -55,15 +61,32 @@ fun ManageScreen(
     var menuTarget by remember { mutableStateOf<FileItem?>(null) }
     var deleteTarget by remember { mutableStateOf<FileItem?>(null) }
 
-    BackHandler(enabled = true) { viewModel.goBack() }
+    val selectedFiles = rememberSaveable { mutableStateSetOf<String>() }
+    var isSelectionMode by rememberSaveable { mutableStateOf(false) }
+    var showCreateZipDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = true) {
+        if (isSelectionMode) {
+            isSelectionMode = false
+            selectedFiles.clear()
+        } else {
+            viewModel.goBack()
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(currentPath ?: "Диски") },
+                title = {
+                    if (isSelectionMode) {
+                        Text("Выберете файлы")
+                    } else {
+                        Text(currentPath ?: "Диски")
+                    }
+                },
                 actions = {
-                    if (currentPath != null) {
+                    if (!isSelectionMode && currentPath != null) {
                         IconButton(onClick = { viewModel.setFilter("") }) {
                             Icon(Icons.Default.FilterAlt, "Filter")
                         }
@@ -72,9 +95,18 @@ fun ManageScreen(
             )
         },
         floatingActionButton = {
-            if (currentPath != null) {
+            if (!isSelectionMode && currentPath != null) {
                 FloatingActionButton(onClick = { showCreateDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Создать")
+                }
+            }
+        },
+        bottomBar = {
+            if (isSelectionMode) {
+                BottomAppBar {
+                    IconButton(onClick = { showCreateZipDialog = true }) {
+                        Icon(Icons.Default.FolderZip, "Создать архив")
+                    }
                 }
             }
         }
@@ -96,6 +128,21 @@ fun ManageScreen(
             )
         }
 
+        if (showCreateZipDialog) {
+            CreateZipDialog(
+                onDismiss = { showCreateZipDialog = false },
+                onConfirm = { archiveName ->
+                    viewModel.createZip(
+                        archiveName = archiveName,
+                        relativePaths = selectedFiles.toList()
+                    )
+                    showCreateZipDialog = false
+                    selectedFiles.clear()
+                    isSelectionMode = false
+                }
+            ) 
+        }
+
         if (currentPath == null) {
             DisksContent(
                 state = disksState,
@@ -110,11 +157,28 @@ fun ManageScreen(
                 menuTarget = menuTarget,
                 onMenuTargetChange = { menuTarget = it },
                 onFileClick = { file ->
-                    if (file.isDirectory) viewModel.openDir(file.path)
-                    else if (file.path.endsWith(".json")) openJson(file.path)
-                    else if (file.path.endsWith(".xml")) openXml(file.path)
+                    if (isSelectionMode) {
+                        if (selectedFiles.contains(file.path)) {
+                            selectedFiles.remove(file.path)
+                        } else {
+                            selectedFiles.add(file.path)
+                        }
+                    } else {
+                        if (file.isDirectory) {
+                            viewModel.openDir(file.path)
+                        } else if (file.path.endsWith(".json")) {
+                            openJson(file.path)
+                        } else if (file.path.endsWith(".xml")) {
+                            openXml(file.path)
+                        }
+                    }
                 },
-                onFileLongClick = { menuTarget = it },
+                onFileLongClick = { file ->
+                    if (!isSelectionMode) {
+                        selectedFiles.add(file.path)
+                        isSelectionMode = true
+                    }
+                },
                 onRenameClick = { file ->
                     renameTarget = file
                     menuTarget = null
@@ -122,7 +186,9 @@ fun ManageScreen(
                 onDeleteClick = { file ->
                     deleteTarget = file
                     menuTarget = null
-                }
+                },
+                isSelectionMode = isSelectionMode,
+                selectedFiles = selectedFiles
             )
         }
 

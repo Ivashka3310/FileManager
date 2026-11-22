@@ -56,4 +56,12 @@ interface FileRemoteDataSource {
         token: String,
         path: String
     ): String
+
+    suspend fun createZip(
+        url: String,
+        token: String,
+        archivePath: String,
+        archiveName: String,
+        relativePaths: List<String>
+    )
 }

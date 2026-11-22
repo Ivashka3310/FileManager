@@ -51,8 +51,7 @@ class FileRemoteMediator(
             )
 
             if (loadType == LoadType.REFRESH) {
-                localDataSource.clear()
-                localDataSource.insertFiles(files.map { localMapper.toEntity(it) })
+                localDataSource.clearAndInsert(files.map { localMapper.toEntity(it) })
             } else {
                 localDataSource.insertFiles(files.map { localMapper.toEntity(it) })
             }
