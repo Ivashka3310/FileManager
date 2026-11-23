@@ -2,13 +2,12 @@ package com.example.filemanager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.example.filemanager.domain.DisksUiState
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
-import com.example.filemanager.domain.usecase.DeleteFileUseCase
+import com.example.filemanager.domain.usecase.DeleteFilesUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
 import com.example.filemanager.domain.usecase.RenameFileUseCase
@@ -29,7 +28,7 @@ class ManageViewModel(
     private val getLocalDisksUseCase: GetLocalDisksUseCase,
     private val createFileUseCase: CreateFileUseCase,
     private val renameFileUseCase: RenameFileUseCase,
-    private val deleteFileUseCase: DeleteFileUseCase,
+    private val deleteFilesUseCase: DeleteFilesUseCase,
     private val createZipUseCase: CreateZipUseCase
 ) : ViewModel() {
 
@@ -46,6 +45,9 @@ class ManageViewModel(
     val disks = _disks.asStateFlow()
 
     private val refreshTrigger = MutableStateFlow(0)
+
+    private val _selectedFiles = MutableStateFlow<Set<FileItem>>(emptySet())
+    val selectedFiles = _selectedFiles.asStateFlow()
 
     init {
         loadDisks()
@@ -152,32 +154,31 @@ class ManageViewModel(
         }
     }
 
-    fun deleteFile(path: String) {
-        val relativePath = toRelative(path)
+    fun deleteSelectedFiles() {
+        val relativePaths = selectedFiles.value.map { toRelative(it.path) }
 
         viewModelScope.launch {
-            runCatching { deleteFileUseCase(relativePath, recursive = true) }
+            runCatching { deleteFilesUseCase(relativePaths = relativePaths, recursive = true) }
                 .onSuccess {
                     showMessage("Удалено")
-
-                    val current = currentPath.value?.let { toRelative(it) }
-                    if (current == relativePath) {
-                        goBack()
-                    }
-
                     refreshTrigger.update { it + 1 }
                 }
                 .onFailure { showMessage(it.message ?: "Ошибка удаления") }
         }
     }
 
-    fun createZip(archiveName: String, relativePaths: List<String>) {
+
+    fun createZip(archiveName: String) {
+        if (selectedFiles.value.isEmpty()) return
+
+        val relativePaths = selectedFiles.value.map { toRelative(it.path) }
+
         viewModelScope.launch {
             runCatching {
                 createZipUseCase(
                     archivePath = currentPath.value?.let { toRelative(it) } ?: return@launch,
                     archiveName = archiveName,
-                    relativePaths = relativePaths.map { it.removePrefix("/") }
+                    relativePaths = relativePaths
                 )
             }.onSuccess {
                 showMessage("Архив создан")
@@ -186,6 +187,16 @@ class ManageViewModel(
                 showMessage(it.message ?: "Ошибка создания")
             }
         }
+    }
+
+    fun toggleSelection(file: FileItem) {
+        _selectedFiles.update { current ->
+            if (current.contains(file)) current - file else current + file
+        }
+    }
+
+    fun clearSelection() {
+        _selectedFiles.value = emptySet()
     }
 
     private fun showMessage(msg: String) {

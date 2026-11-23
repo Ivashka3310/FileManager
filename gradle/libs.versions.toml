@@ -29,6 +29,7 @@ jcipAnnotations = "1.0"
 lifecycleViewmodelKtx = "2.11.0"
 ui = "1.12.1"
 room = "2.8.4"
+material3Version = "1.5.0"
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }
@@ -92,6 +93,7 @@ play-services-mlkit-barcode-scanning = { group = "com.google.android.gms", name 
 jcip-annotations = { group = "net.jcip", name = "jcip-annotations", version.ref = "jcipAnnotations" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3Version" }
 
 [plugins]
 ktor = {id = "io.ktor.plugin", version.ref = "ktor" }

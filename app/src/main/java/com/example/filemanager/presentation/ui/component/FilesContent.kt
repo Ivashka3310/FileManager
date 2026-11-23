@@ -41,10 +41,8 @@ fun FilesContent(
     onMenuTargetChange: (FileItem?) -> Unit,
     onFileClick: (FileItem) -> Unit,
     onFileLongClick: (FileItem) -> Unit,
-    onRenameClick: (FileItem) -> Unit,
-    onDeleteClick: (FileItem) -> Unit,
     isSelectionMode: Boolean,
-    selectedFiles: Set<String>
+    selectedFiles: Set<FileItem>
 ) {
     val isRefreshing = items.loadState.refresh is LoadState.Loading
     val isFirstLoad = isRefreshing && items.itemCount == 0
@@ -88,7 +86,7 @@ fun FilesContent(
                 ) { index ->
                     val file = items[index]
                     file?.let {
-                        val isSelected = selectedFiles.contains(it.path)
+                        val isSelected = selectedFiles.contains(it)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -109,27 +107,6 @@ fun FilesContent(
                                         isSelectionMode = isSelectionMode,
                                         isSelected = isSelected,
                                         onSelectToggle = { onFileClick(it) }
-                                    )
-                                }
-                            }
-
-                            if (menuTarget?.path == it.path) {
-                                DropdownMenu(expanded = true, onDismissRequest = { onMenuTargetChange(null) }) {
-                                    DropdownMenuItem(
-                                        text = { Text("Переименовать") },
-                                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                                        onClick = { onRenameClick(it) }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
-                                        leadingIcon = {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.error
-                                            )
-                                        },
-                                        onClick = { onDeleteClick(it) }
                                     )
                                 }
                             }

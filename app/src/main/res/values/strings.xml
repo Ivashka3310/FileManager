@@ -2,4 +2,11 @@
     <string name="app_name">FileManager</string>
     <string name="title_activity_main">File Manager</string>
     <string name="connect_button_name">Подключиться к ПК</string>
+
+    <plurals name="delete_confirmation_message">
+        <item quantity="one">Вы хотите безвозвратно удалить выбранный элемент?</item>
+        <item quantity="few">Вы хотите безвозвратно удалить %1$d выбранных элемента?</item>
+        <item quantity="many">Вы хотите безвозвратно удалить %1$d выбранных элементов?</item>
+        <item quantity="other">Вы хотите безвозвратно удалить %1$d выбранных элементов?</item>
+    </plurals>
 </resources>

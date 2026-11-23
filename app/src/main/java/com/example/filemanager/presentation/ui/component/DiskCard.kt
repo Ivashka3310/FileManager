@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.filemanager.domain.util.formatBytes
 import com.example.shared.models.DiskInfo
 
 @Composable
@@ -106,23 +107,6 @@ fun DiskCard(
                 )
             }
         }
-    }
-}
-
-@SuppressLint("DefaultLocale")
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0) return "0 Б"
-    val kb = bytes / 1024.0
-    val mb = kb / 1024.0
-    val gb = mb / 1024.0
-    val tb = gb / 1024.0
-
-    return when {
-        tb >= 1.0 -> String.format("%.1f ТБ", tb)
-        gb >= 1.0 -> String.format("%.1f ГБ", gb)
-        mb >= 1.0 -> String.format("%.1f МБ", mb)
-        kb >= 1.0 -> String.format("%.1f КБ", kb)
-        else -> "$bytes Б"
     }
 }
 

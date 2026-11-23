@@ -6,6 +6,7 @@ import com.example.server.domain.FileService
 import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
 import com.example.shared.requests.CreateZipRequest
+import com.example.shared.requests.DeleteFilesRequest
 import com.example.shared.requests.FileListRequest
 import com.example.shared.requests.RenameFileRequest
 import io.ktor.http.ContentType
@@ -102,15 +103,17 @@ fun Application.configureRouting(
             }
 
             delete("/files/delete") {
-                val relativePath = call.request.queryParameters["path"]
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing path"))
-                val recursive = call.request.queryParameters["recursive"]?.toBoolean() ?: false
+                val request = call.receive<DeleteFilesRequest>()
+                val relativePaths = request.relativePaths
+                val recursive = request.recursive
 
-                val deleted = fileService.deleteFile(relativePath, recursive)
-                if (deleted) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Delete failed. Directory might not be empty."))
+                relativePaths.forEach { relativePath ->
+                    val deleted = fileService.deleteFile(relativePath, recursive)
+                    if (deleted) {
+                        call.respond(HttpStatusCode.NoContent)
+                    } else {
+                        call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Delete failed. Directory might not be empty."))
+                    }
                 }
             }
 

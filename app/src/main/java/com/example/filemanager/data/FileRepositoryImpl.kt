@@ -91,12 +91,12 @@ class FileRepositoryImpl(
         )
     }
 
-    override suspend fun deleteFile(path: String, recursive: Boolean): Boolean {
+    override suspend fun deleteFiles(relativePaths: List<String>, recursive: Boolean): Boolean {
         val (url, token) = getSession()
-        return fileRemoteDataSource.deleteFile(
+        return fileRemoteDataSource.deleteFiles(
             url = url,
             token = token,
-            path = path,
+            relativePaths = relativePaths,
             recursive = recursive
         )
     }

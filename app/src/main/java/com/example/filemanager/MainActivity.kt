@@ -24,7 +24,7 @@ import com.example.filemanager.domain.SessionStorage
 import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
-import com.example.filemanager.domain.usecase.DeleteFileUseCase
+import com.example.filemanager.domain.usecase.DeleteFilesUseCase
 import com.example.filemanager.domain.usecase.GetJsonFileContentUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
         val getLocalDisksUseCase = GetLocalDisksUseCase(fileRepository)
         val createFileUseCase = CreateFileUseCase(fileRepository)
         val renameFileUseCase = RenameFileUseCase(fileRepository)
-        val deleteFileUseCase = DeleteFileUseCase(fileRepository)
+        val deleteFilesUseCase = DeleteFilesUseCase(fileRepository)
         val getJsonFileContentUseCase = GetJsonFileContentUseCase(fileRepository)
         val getXmlFileContentUseCase = GetXmlFileContentUseCase(fileRepository)
         val createZipUseCase = CreateZipUseCase(fileRepository)
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
                         getLocalDisksUseCase = getLocalDisksUseCase,
                         createFileUseCase = createFileUseCase,
                         renameFileUseCase = renameFileUseCase,
-                        deleteFileUseCase = deleteFileUseCase,
+                        deleteFilesUseCase = deleteFilesUseCase,
                         createZipUseCase = createZipUseCase
                     )
                 }

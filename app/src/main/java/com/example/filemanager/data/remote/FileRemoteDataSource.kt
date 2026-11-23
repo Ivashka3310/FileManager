@@ -38,10 +38,10 @@ interface FileRemoteDataSource {
         newPath: String
     ): Boolean
 
-    suspend fun deleteFile(
+    suspend fun deleteFiles(
         url: String,
         token: String,
-        path: String,
+        relativePaths: List<String>,
         recursive: Boolean
     ): Boolean
 

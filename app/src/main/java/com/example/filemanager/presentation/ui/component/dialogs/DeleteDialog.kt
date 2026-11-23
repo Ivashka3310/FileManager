@@ -4,12 +4,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.shared.models.FileItem
+import com.example.filemanager.R
 
 @Composable
 fun DeleteDialog(
-    file: FileItem,
+    count: Int,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -18,11 +19,11 @@ fun DeleteDialog(
         title = { Text("Удалить?") },
         text = {
             Text(
-                if (file.isDirectory) {
-                    "Папка \"${file.name}\" и её содержимое будут удалены безвозвратно."
-                } else {
-                    "Файл \"${file.name}\" будет удалён безвозвратно."
-                }
+                text = pluralStringResource(
+                    id = R.plurals.delete_confirmation_message,
+                    count = count,
+                    count
+                )
             )
         },
         confirmButton = {
@@ -38,13 +39,5 @@ fun DeleteDialog(
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun DeleteDialogPreview() {
-    val file = FileItem(
-        name = "File.example",
-        path = "/File.example",
-        size = 10,
-        isDirectory = false,
-        createdAt = "",
-        lastModified = ""
-    )
-    DeleteDialog(file, {}, {})
+    DeleteDialog(2, onDismiss =  {}, onConfirm = {})
 }

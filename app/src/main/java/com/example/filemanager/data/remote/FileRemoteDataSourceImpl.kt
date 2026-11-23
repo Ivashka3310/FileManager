@@ -5,6 +5,7 @@ import com.example.shared.models.FileItem
 import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
 import com.example.shared.requests.CreateZipRequest
+import com.example.shared.requests.DeleteFilesRequest
 import com.example.shared.requests.RenameFileRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -118,16 +119,16 @@ class FileRemoteDataSourceImpl(
         return handleActionResponse(response)
     }
 
-    override suspend fun deleteFile(
+    override suspend fun deleteFiles(
         url: String,
         token: String,
-        path: String,
+        relativePaths: List<String>,
         recursive: Boolean
     ): Boolean {
         val response = client.delete("$url/files/delete") {
             header(HttpHeaders.Authorization, "Bearer $token")
-            parameter("path", path)
-            parameter("recursive", recursive.toString())
+            contentType(ContentType.Application.Json)
+            setBody(DeleteFilesRequest(relativePaths, recursive))
         }
         return response.status == HttpStatusCode.NoContent
     }
