@@ -1,87 +1,171 @@
 package com.example.filemanager.data
 
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
+import com.example.filemanager.data.local.FileEntity
+import com.example.filemanager.data.local.FileLocalDataSource
+import com.example.filemanager.data.local.FileLocalMapper
+import com.example.filemanager.data.remote.FileRemoteDataSource
 import com.example.filemanager.domain.FileRepository
 import com.example.filemanager.domain.SessionStorage
-import com.example.shared.FileListRequest
+import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
-import io.ktor.http.contentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.net.URI
 
 class FileRepositoryImpl(
-    private val client: HttpClient,
-    private val sessionStorage: SessionStorage
+    private val fileRemoteDataSource: FileRemoteDataSource,
+    private val localDataSource: FileLocalDataSource,
+    private val sessionStorage: SessionStorage,
+    private val mapper: FileLocalMapper
 ) : FileRepository {
     override suspend fun connectViaQrData(qrData: String): Result<Unit> = runCatching {
-        if (!qrData.contains("secret=")) {
-            throw Exception("Secret not found in QR")
-        }
-
         val uri = URI(qrData)
-        val host = uri.host ?: throw IllegalArgumentException("Invalid host in QR")
-        val secret = uri.query?.split('=')[1] ?: throw Exception("Secret not found")
-        val url = "http://$host:${uri.port}"
+        val host = uri.host ?: error("Invalid host in QR: $qrData")
+        val secret = uri.query
+            ?.split('&')
+            ?.mapNotNull { it.split('=', limit = 2).takeIf { p -> p.size == 2 } }
+            ?.firstOrNull { it[0] == "secret" }
+            ?.get(1)
+            ?: error("Secret not found in QR: $qrData")
+
+        val port = if (uri.port == -1) 80 else uri.port
+        val url = "http://$host:$port"
         sessionStorage.saveUrl(url)
 
+        val token = fileRemoteDataSource.login(url, secret)
 
-        val response = client.post("$url/login") {
-            setBody(FormDataContent(Parameters.build {
-                append("secret", secret)
-            }))
-        }
+        sessionStorage.saveToken(token)
+    }
 
-        if (response.status != HttpStatusCode.OK) {
-            throw Exception("Auth failed with status: ${response.status}")
-        }
-
-        val body = response.body<Map<String, String>>()
-
-        body["token"]?.let { receivedToken ->
-            sessionStorage.saveToken(receivedToken)
-        } ?: throw Exception("Token not found in response")
+    override suspend fun getLocalDisks(): List<DiskInfo> {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.getLocalDisks(url, token)
     }
 
     override suspend fun getFiles(
         path: String,
         offset: Int,
-        limit: Int
+        limit: Int,
+        filter: String?
     ): List<FileItem> {
-        val currentUrl = sessionStorage.url.first()
-        val currentToken = sessionStorage.accessToken.first()
+        val (url, token) = getSession()
+        return fileRemoteDataSource.getFiles(
+            url = url,
+            token = token,
+            path = path,
+            offset = offset,
+            limit = limit,
+            filter = filter
+        )
+    }
 
-        if (currentUrl.isNullOrEmpty() || currentToken.isNullOrEmpty()) {
-            throw Exception("Session expired")
-        }
+    override suspend fun createFile(path: String, isDirectory: Boolean): Boolean {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.createFile(url, token, path, isDirectory)
+    }
 
-        val response = client.get("$currentUrl/files/list") {
-            header(HttpHeaders.Authorization, "Bearer $currentToken")
-            contentType(ContentType.Application.Json)
-            setBody(FileListRequest(path, offset, limit))
-        }
+    override suspend fun copyFile(sourcePath: String, destinationPath: String, overwrite: Boolean): Boolean {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.copyFile(
+            url = url,
+            token = token,
+            sourcePath = sourcePath,
+            destinationPath = destinationPath,
+            overwrite = overwrite
+        )
+    }
 
-        return when(response.status) {
-            HttpStatusCode.OK -> response.body<List<FileItem>>()
-            HttpStatusCode.Locked -> {
-                val message = response.body<Map<String, String>>()["message"] ?: "Folder is locked"
-                throw Exception(message)
+    override suspend fun renameFile(oldPath: String, newPath: String): Boolean {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.renameFile(
+            url = url,
+            token = token,
+            oldPath = oldPath,
+            newPath = newPath
+        )
+    }
+
+    override suspend fun deleteFiles(relativePaths: List<String>, recursive: Boolean): Boolean {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.deleteFiles(
+            url = url,
+            token = token,
+            relativePaths = relativePaths,
+            recursive = recursive
+        )
+    }
+
+    @OptIn(ExperimentalPagingApi::class)
+    override fun getPagerFiles(path: String, filter: String?): Flow<PagingData<FileItem>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 50,
+                initialLoadSize = 40,
+                prefetchDistance = 20,
+                enablePlaceholders = true
+            ),
+            remoteMediator = FileRemoteMediator(
+                sessionStorage = sessionStorage,
+                currentPath = path,
+                fileRemoteDataSource = fileRemoteDataSource,
+                localDataSource = localDataSource,
+                localMapper = mapper,
+                filter = filter,
+            ),
+            pagingSourceFactory = {
+                localDataSource.getFilesPagingSource()
             }
-            else -> throw Exception("Server error: ${response.status}")
+        ).flow.map { pagingData ->
+            pagingData.map { fileEntity -> mapper.toDomain(fileEntity) }
         }
     }
 
-    override suspend fun removeFile(relativePath: String): Flow<String> {
-        TODO("Not yet implemented")
+    override suspend fun getJsonFileContent(path: String): String {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.getJsonFileContent(url, token, path)
+
+    }
+
+    override suspend fun getXmlFileContent(path: String): String {
+        val (url, token) = getSession()
+        return fileRemoteDataSource.getXmlFileContent(url, token, path)
+    }
+
+    override suspend fun createZip(
+        archivePath: String,
+        archiveName: String,
+        relativePaths: List<String>
+    ) {
+        val (url, token) = getSession()
+        fileRemoteDataSource.createZip(
+            url = url,
+            token = token,
+            archivePath = archivePath,
+            archiveName = archiveName,
+            relativePaths = relativePaths
+        )
+    }
+
+    override suspend fun extractZip(zipPath: String, targetDir: String) {
+        val (url, token) = getSession()
+        fileRemoteDataSource.extractZip(
+            url = url,
+            token = token,
+            zipPath = zipPath,
+            targetDir = targetDir
+        )
+    }
+
+    private suspend fun getSession(): Pair<String, String> {
+        val url = sessionStorage.url.first()
+        val token = sessionStorage.accessToken.first()
+        if (url.isNullOrEmpty() || token.isNullOrEmpty()) error("Session expired")
+        return url to token
     }
 }

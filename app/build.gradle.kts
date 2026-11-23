@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -41,6 +42,14 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
+    implementation(libs.material3)
+    ksp(libs.androidx.room.compiler)
+
+    implementation(libs.androidx.ui)
     implementation(libs.play.services.mlkit.barcode.scanning)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
@@ -58,9 +67,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.ktor.ktor.client.mock)
-    testImplementation(libs.kotlinx.coroutines.test) // Используйте версию, соответствующую вашим корутинам
+    testImplementation(libs.kotlinx.coroutines.test)
 
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
@@ -73,7 +81,6 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.websockets)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.gson)
 
@@ -81,4 +88,6 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    implementation(libs.jsontree)
 }

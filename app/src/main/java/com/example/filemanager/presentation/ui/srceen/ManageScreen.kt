@@ -1,19 +1,21 @@
 package com.example.filemanager.presentation.ui.srceen
 
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -21,114 +23,195 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
-import com.example.filemanager.presentation.ui.component.FileCard
+import com.example.filemanager.presentation.ui.component.dialogs.CreateDialog
+import com.example.filemanager.presentation.ui.component.dialogs.DeleteDialog
+import com.example.filemanager.presentation.ui.component.DisksContent
+import com.example.filemanager.presentation.ui.component.FileSelectionTopAppBar
+import com.example.filemanager.presentation.ui.component.FilesContent
+import com.example.filemanager.presentation.ui.component.dialogs.CreateZipDialog
+import com.example.filemanager.presentation.ui.component.dialogs.InfoDialog
+import com.example.filemanager.presentation.ui.component.dialogs.RenameDialog
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.shared.models.FileItem
-
-@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ManageScreen(
-    viewModel: ManageViewModel = viewModel()
+    viewModel: ManageViewModel = viewModel(),
+    openJson: (String) -> Unit,
+    openXml: (String) -> Unit
 ) {
     val messages by viewModel.uiState.collectAsState()
     val currentPath by viewModel.currentPath.collectAsState()
-    val lazyPagingItems: LazyPagingItems<FileItem> = viewModel.filesFlow.collectAsLazyPagingItems()
+    val disksState by viewModel.disks.collectAsState()
+    val selectedFiles by viewModel.selectedFiles.collectAsState()
+    val isSelectionMode = selectedFiles.isNotEmpty()
+    val isSingleFile = selectedFiles.size == 1
+
+    val lazyPagingItems: LazyPagingItems<FileItem>? = if (currentPath != null) {
+        viewModel.filesFlow.collectAsLazyPagingItems()
+    } else null
 
     val context = LocalContext.current
 
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var renameTarget by remember { mutableStateOf<FileItem?>(null) }
+    var menuTarget by remember { mutableStateOf<FileItem?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showCreateZipDialog by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+
     BackHandler(enabled = true) {
-        viewModel.goBack()
+        if (isSelectionMode) {
+            viewModel.clearSelection()
+        } else {
+            viewModel.goBack()
+        }
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(currentPath)
+            if (isSelectionMode) {
+                val file = selectedFiles.first()
+                FileSelectionTopAppBar(
+                    selectedCount = selectedFiles.size,
+                    isSingleFile = isSingleFile,
+                    isCompressed = file.name.endsWith(".zip"),
+                    onClose = { viewModel.clearSelection() },
+                    onZip = { showCreateZipDialog = true },
+                    onExtract = {
+                        viewModel.extractZip(file.path, file.name)
+                        viewModel.clearSelection()
+                    },
+                    onRename = { renameTarget = file },
+                    onDelete = { showDeleteDialog = true },
+                    onInfo = { showInfoDialog = true }
+                )
+            } else {
+                TopAppBar(
+                    title = { Text(currentPath ?: "Диски") },
+                    actions = {
+                        if (currentPath != null) {
+                            IconButton(onClick = { viewModel.setFilter("") }) {
+                                Icon(Icons.Default.FilterAlt, "Filter")
+                            }
+                        }
+                    }
+                )
+            }
+        },
+        floatingActionButton = {
+            if (!isSelectionMode && currentPath != null) {
+                FloatingActionButton(onClick = { showCreateDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Создать")
                 }
-            )
+            }
         }
     ) { innerPadding ->
         LaunchedEffect(messages) {
             if (messages.isNotEmpty()) {
                 Toast.makeText(context, messages.last(), Toast.LENGTH_SHORT).show()
+                viewModel.clearMessages()
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(
-                count = lazyPagingItems.itemCount,
-                key = lazyPagingItems.itemKey { it.path }
-            ) { index ->
-                val fileItem = lazyPagingItems[index]
-
-                fileItem?.let { file ->
-                    FileCard(
-                        file = file,
-                        onClick = { viewModel.openDir(file.path) }
-                    )
+        if (showCreateDialog) {
+            CreateDialog(
+                onDismiss = { showCreateDialog = false },
+                onConfirm = { name, isDir ->
+                    viewModel.createFile(name, isDir)
+                    showCreateDialog = false
                 }
-            }
+            )
+        }
 
-            if (lazyPagingItems.loadState.append is LoadState.Loading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+        if (showCreateZipDialog) {
+            CreateZipDialog(
+                onDismiss = { showCreateZipDialog = false },
+                onConfirm = { archiveName ->
+                    viewModel.createZip(archiveName)
+                    viewModel.clearSelection()
+                    showCreateZipDialog = false
+                }
+            ) 
+        }
+
+        if (showDeleteDialog) {
+            DeleteDialog(
+                count = selectedFiles.size,
+                onDismiss = { showDeleteDialog = false },
+                onConfirm = {
+                    viewModel.deleteSelectedFiles()
+                    viewModel.clearSelection()
+                    showDeleteDialog = false
+                }
+            )
+        }
+
+        if (showInfoDialog) {
+            InfoDialog(
+                file = selectedFiles.first(),
+                onDismiss = { showInfoDialog = false }
+            )
+        }
+
+        if (currentPath == null) {
+            DisksContent(
+                state = disksState,
+                innerPadding = innerPadding,
+                onRetry = viewModel::loadDisks,
+                onDiskClick = viewModel::openDisk
+            )
+        } else if (lazyPagingItems != null) {
+            FilesContent(
+                items = lazyPagingItems,
+                innerPadding = innerPadding,
+                menuTarget = menuTarget,
+                onMenuTargetChange = { menuTarget = it },
+                onFileClick = { file ->
+                    if (isSelectionMode) {
+                        viewModel.toggleSelection(file)
+                    } else {
+                        if (file.isDirectory) {
+                            viewModel.openDir(file.path)
+                        } else if (file.path.endsWith(".json")) {
+                            openJson(file.path)
+                        } else if (file.path.endsWith(".xml")) {
+                            openXml(file.path)
+                        }
                     }
-                }
-            }
+                },
+                onFileLongClick = { file ->
+                    viewModel.toggleSelection(file)
+                },
+                isSelectionMode = isSelectionMode,
+                selectedFiles = selectedFiles
+            )
         }
 
-        if (lazyPagingItems.loadState.refresh is LoadState.Loading) {
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-            ) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
-        }
-
-        val refreshState = lazyPagingItems.loadState.refresh
-        if (refreshState is LoadState.Error) {
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Ошибка загрузки: ${refreshState.error.localizedMessage ?: "Неизвестная ошибка"}",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    Button(onClick = { lazyPagingItems.retry() }) {
-                        Text("Повторить")
+        renameTarget?.let { file ->
+            RenameDialog(
+                oldName = file.name,
+                onDismiss = { renameTarget = null },
+                onConfirm = { newName ->
+                    if (file.name != newName) {
+                        viewModel.renameFile(file.path, newName)
                     }
+                    viewModel.clearSelection()
+                    renameTarget = null
                 }
-            }
+            )
         }
     }
 }

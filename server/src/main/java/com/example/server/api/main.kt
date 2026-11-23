@@ -4,17 +4,12 @@ import com.example.server.api.security.AuthManager
 import com.example.server.api.security.JwtService
 import com.example.server.api.security.configureSecurity
 import com.example.server.data.FileServiceImpl
-import com.google.gson.Gson
+import io.ktor.serialization.gson.gson
 import io.ktor.server.application.Application
-import io.ktor.server.websocket.WebSockets
 import io.ktor.server.application.install
 import io.ktor.server.cio.EngineMain
-import io.ktor.server.websocket.pingPeriod
-import io.ktor.server.websocket.timeout
-import kotlin.io.path.Path
-import kotlin.time.Duration.Companion.seconds
-import io.ktor.serialization.gson.gson
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import kotlin.io.path.Path
 
 
 fun main(args: Array<String>) {
@@ -25,6 +20,7 @@ fun Application.module() {
     val secretKey = AuthManager.generateNewSecret()
     val serverIp = environment.config.propertyOrNull("ktor.deployment.ip")?.getString() ?: "localhost"
     val serverPort = environment.config.propertyOrNull("ktor.deployment.port")?.getString() ?: "8888"
+    require(serverPort.toInt() in 1..65535) { "Invalid server port: $serverPort" }
     val qrData = "http://$serverIp:$serverPort/login?secret=$secretKey"
 
     ProcessBuilder("qrencode", "-t", "ansiutf8", qrData)
