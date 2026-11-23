@@ -8,6 +8,7 @@ import com.example.filemanager.domain.DisksUiState
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
 import com.example.filemanager.domain.usecase.DeleteFilesUseCase
+import com.example.filemanager.domain.usecase.ExtractZipUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
 import com.example.filemanager.domain.usecase.RenameFileUseCase
@@ -29,7 +30,8 @@ class ManageViewModel(
     private val createFileUseCase: CreateFileUseCase,
     private val renameFileUseCase: RenameFileUseCase,
     private val deleteFilesUseCase: DeleteFilesUseCase,
-    private val createZipUseCase: CreateZipUseCase
+    private val createZipUseCase: CreateZipUseCase,
+    private val extractZipUseCase: ExtractZipUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<List<String>>(emptyList())
@@ -186,6 +188,40 @@ class ManageViewModel(
             }.onFailure {
                 showMessage(it.message ?: "Ошибка создания")
             }
+        }
+    }
+
+    fun extractZip(path: String, name: String) {
+        if (selectedFiles.value.size != 1) return
+
+        val currentDir = currentPath.value ?: return
+        val zipPath = toRelative(path)
+
+        val folderName = name.substringBeforeLast('.')
+
+        val cleanCurrent = toRelative(currentDir)
+        val targetDir = if (cleanCurrent == "." || cleanCurrent.isEmpty()) {
+            folderName
+        } else {
+            "$cleanCurrent/$folderName"
+        }
+
+        viewModelScope.launch {
+            runCatching { extractZipUseCase(zipPath, targetDir) }
+                .onSuccess {
+                    showMessage("Извлечение успешно")
+                    refreshTrigger.update { it + 1 }
+                }
+                .onFailure { error ->
+                    val errorMsg = when (error) {
+                        is SecurityException -> error.message ?: "Ошибка безопасности"
+
+                        is IllegalArgumentException -> error.message ?: "Некорректный запрос"
+                        is NoSuchFileException -> "Файл или папка не найдены"
+                        else -> "Ошибка извлечения: ${error.message}"
+                    }
+                    showMessage(errorMsg)
+                }
         }
     }
 

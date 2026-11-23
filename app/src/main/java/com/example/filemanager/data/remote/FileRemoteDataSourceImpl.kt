@@ -6,6 +6,7 @@ import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
 import com.example.shared.requests.CreateZipRequest
 import com.example.shared.requests.DeleteFilesRequest
+import com.example.shared.requests.ExtractZipRequest
 import com.example.shared.requests.RenameFileRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -193,6 +194,45 @@ class FileRemoteDataSourceImpl(
         }
 
         handleActionResponse(response)
+    }
+
+    override suspend fun extractZip(
+        url: String,
+        token: String,
+        zipPath: String,
+        targetDir: String
+    ) {
+        val response = client.post("$url/files/extract") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(ExtractZipRequest(zipPath, targetDir))
+        }
+
+        when (response.status) {
+            HttpStatusCode.OK -> {}
+
+            HttpStatusCode.Forbidden -> throw SecurityException(
+                response.errorMessage("Доступ запрещен или архив небезопасен (Zip Slip/Bomb)")
+            )
+
+            HttpStatusCode.NotFound -> throw NoSuchFileException(
+                File(zipPath)
+            )
+
+            HttpStatusCode.BadRequest -> throw IllegalArgumentException(
+                response.errorMessage("Некорректный путь или папка назначения не пуста")
+            )
+
+            HttpStatusCode.Conflict -> throw IllegalStateException(
+                response.errorMessage("Конфликт: возможно, папка назначения уже существует")
+            )
+
+            HttpStatusCode.InternalServerError -> throw Exception(
+                response.errorMessage("Внутренняя ошибка сервера при распаковке (архив поврежден?)")
+            )
+
+            else -> throw Exception("Неизвестная ошибка сервера при распаковке: ${response.status}")
+        }
     }
 
     private suspend fun handleActionResponse(response: HttpResponse): Boolean {

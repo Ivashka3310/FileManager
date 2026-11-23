@@ -17,6 +17,15 @@ interface FileService {
         relativePaths: List<String>,
         targetZipRelativePath: String,
         maxSingleFileSize: Long = 50 * 1024 * 1024,
-        maxTotalSize: Long = 200 * 1024 * 1024
+        maxTotalSize: Long = 200 * 1024 * 1024,
+        maxFiles: Int = 1000
+    )
+    suspend fun extractZip(
+        zipPath: String,
+        relativePath: String,
+        maxEntries: Int = 1000,
+        maxTotalSize: Int = 200 * 1024 * 1024,
+        maxCompressionRatio: Double = 20.0,
+        bufferSize: Int = 8192
     )
 }

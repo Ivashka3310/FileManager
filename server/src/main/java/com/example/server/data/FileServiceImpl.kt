@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xml.sax.InputSource
 import org.xml.sax.SAXException
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.IOException
 import java.io.StringReader
@@ -22,6 +24,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.Locale
 import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.fileSize
@@ -30,6 +33,7 @@ import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.inputStream
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.outputStream
 
@@ -155,10 +159,21 @@ class FileServiceImpl(rootPath: Path) : FileService {
         relativePath: String,
         isDirectory: Boolean
     ): Boolean = withContext(Dispatchers.IO) {
-        val target = resolveForCreate(relativePath)
+        val initialTarget = resolveForCreate(relativePath)
+        val parentDir = initialTarget.parent ?: return@withContext false
+
+        val usedNames = mutableSetOf<String>()
+        if (Files.exists(parentDir) && Files.isDirectory(parentDir)) {
+            Files.list(parentDir).use { stream ->
+                stream.forEach { usedNames.add(it.fileName.toString()) }
+            }
+        }
+
+        val uniqueName = getUniqueEntryName(initialTarget.fileName.toString(), usedNames)
+        val finalTarget = parentDir.resolve(uniqueName)
 
         try {
-            if (isDirectory) Files.createDirectory(target) else Files.createFile(target)
+            if (isDirectory) Files.createDirectory(finalTarget) else Files.createFile(finalTarget)
             true
         } catch (_: FileAlreadyExistsException) {
             false
@@ -191,7 +206,7 @@ class FileServiceImpl(rootPath: Path) : FileService {
                 Files.copy(source, target, *options)
             }
             true
-        } catch (e: FileAlreadyExistsException) {
+        } catch (_: FileAlreadyExistsException) {
             false
         } catch (_: SecurityException) {
             throw SecurityException("Action denied")
@@ -215,8 +230,7 @@ class FileServiceImpl(rootPath: Path) : FileService {
 
             try {
                 Files.move(source, target, StandardCopyOption.ATOMIC_MOVE)
-            } catch (e: AtomicMoveNotSupportedException) {
-                // Если диски разные, делаем обычный move (с копированием)
+            } catch (_: AtomicMoveNotSupportedException) {
                 Files.move(source, target)
             }
             true
@@ -323,10 +337,14 @@ class FileServiceImpl(rootPath: Path) : FileService {
         relativePaths: List<String>,
         targetZipRelativePath: String,
         maxSingleFileSize: Long,
-        maxTotalSize: Long
+        maxTotalSize: Long,
+        maxFiles: Int
     ) = withContext(Dispatchers.IO) {
         if (relativePaths.isEmpty()) {
             throw IllegalArgumentException("File list cannot be empty")
+        }
+        if (relativePaths.size > maxFiles) {
+            throw IllegalArgumentException("Too many files to archive (max $maxFiles)")
         }
 
         var totalSize = 0L
@@ -350,8 +368,27 @@ class FileServiceImpl(rootPath: Path) : FileService {
             resolved
         }
 
-        val targetZip = resolveForCreate(targetZipRelativePath)
-        targetZip.parent?.let { Files.createDirectories(it) }
+        val targetZipPath = Path.of(targetZipRelativePath)
+        if (targetZipPath.isAbsolute) throw IllegalArgumentException("Absolute path not allowed")
+
+        val parentRelative = targetZipPath.parent?.toString() ?: "."
+        val parentResolved = canonicalRoot.resolve(parentRelative).normalize()
+
+        if (!parentResolved.startsWith(canonicalRoot)) {
+            throw SecurityException("Access denied: path escapes root")
+        }
+
+        Files.createDirectories(parentResolved)
+
+        val initialTargetZip = resolveForCreate(targetZipRelativePath)
+
+        val usedZipNames = mutableSetOf<String>()
+        Files.list(parentResolved).use { stream ->
+            stream.forEach { usedZipNames.add(it.fileName.toString()) }
+        }
+
+        val uniqueZipName = getUniqueEntryName(initialTargetZip.fileName.toString(), usedZipNames)
+        val targetZip = parentResolved.resolve(uniqueZipName)
 
         try {
             ZipOutputStream(targetZip.outputStream().buffered()).use { zipOut ->
@@ -371,6 +408,94 @@ class FileServiceImpl(rootPath: Path) : FileService {
         } catch (e: Exception) {
             Files.deleteIfExists(targetZip)
             throw e
+        }
+    }
+
+    override suspend fun extractZip(
+        zipPath: String,
+        relativePath: String,
+        maxEntries: Int,
+        maxTotalSize: Int,
+        maxCompressionRatio: Double,
+        bufferSize: Int
+    ) = withContext(Dispatchers.IO) {
+        val sourcePath = resolveExisting(zipPath)
+
+        val targetPathObj = Path.of(relativePath)
+        val parentResolved = canonicalRoot.resolve(targetPathObj.parent?.toString() ?: ".").normalize()
+
+        if (!parentResolved.startsWith(canonicalRoot)) throw SecurityException("Access denied")
+
+        val baseTargetFile = parentResolved.resolve(targetPathObj.fileName).toFile()
+
+        val finalTargetPath: Path = if (!baseTargetFile.exists() || baseTargetFile.list()?.isEmpty() == false) {
+            val usedNames = mutableSetOf<String>()
+            if (Files.exists(parentResolved)) {
+                Files.list(parentResolved).use { stream -> stream.forEach { usedNames.add(it.fileName.toString()) } }
+            }
+            val uniqueName = getUniqueEntryName(targetPathObj.fileName.toString(), usedNames)
+            val newDir = parentResolved.resolve(uniqueName)
+            Files.createDirectories(newDir)
+            newDir
+        } else {
+            baseTargetFile.toPath()
+        }
+
+        val compressedFileSize = Files.size(sourcePath)
+        if (compressedFileSize <= 0) throw IllegalArgumentException("Архив пуст или поврежден")
+
+        val usedEntryNames = mutableSetOf<String>()
+
+        ZipInputStream(Files.newInputStream(sourcePath)).use { zis ->
+            var entry: ZipEntry? = zis.nextEntry
+            var entryCount = 0
+            var totalUncompressedSize = 0L
+
+            while (entry != null) {
+                entryCount++
+                if (entryCount > maxEntries) throw SecurityException("Zip Bomb: превышено количество файлов")
+
+                val entryPath = Path.of(entry.name)
+                val uniqueName = getUniqueEntryName(entryPath.fileName.toString(), usedEntryNames)
+                val finalEntryPath = entryPath.parent?.resolve(uniqueName) ?: Path.of(uniqueName)
+
+                val targetFile = finalTargetPath.resolve(finalEntryPath).normalize()
+
+                if (!targetFile.startsWith(finalTargetPath)) {
+                    throw SecurityException("Zip Slip: недопустимый путь ${entry.name}")
+                }
+
+                if (entry.isDirectory) {
+                    Files.createDirectories(targetFile)
+                } else {
+                    targetFile.parent?.let { Files.createDirectories(it) }
+
+                    Files.newOutputStream(targetFile).use { outputStream ->
+                        val buffer = ByteArray(bufferSize)
+                        var bytesRead: Int
+                        var entrySize = 0L
+
+                        while (zis.read(buffer).also { bytesRead = it } > 0) {
+                            outputStream.write(buffer, 0, bytesRead)
+                            entrySize += bytesRead
+                            totalUncompressedSize += bytesRead
+
+                            if (totalUncompressedSize > maxTotalSize) {
+                                throw SecurityException("Zip Bomb: превышен максимальный общий размер")
+                            }
+                        }
+
+                        if (entry.compressedSize > 0) {
+                            val ratio = entrySize.toDouble() / entry.compressedSize
+                            if (ratio > maxCompressionRatio) {
+                                throw SecurityException("Zip Bomb: подозрительный коэффициент сжатия ($ratio)")
+                            }
+                        }
+                    }
+                }
+                zis.closeEntry()
+                entry = zis.nextEntry
+            }
         }
     }
 

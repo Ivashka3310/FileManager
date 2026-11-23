@@ -21,4 +21,8 @@ interface FileRepository {
         archiveName: String,
         relativePaths: List<String>
     )
+    suspend fun extractZip(
+        zipPath: String,
+        targetDir: String
+    )
 }

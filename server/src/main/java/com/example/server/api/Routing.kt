@@ -9,6 +9,7 @@ import com.example.shared.requests.CreateZipRequest
 import com.example.shared.requests.DeleteFilesRequest
 import com.example.shared.requests.FileListRequest
 import com.example.shared.requests.RenameFileRequest
+import com.example.shared.requests.ExtractZipRequest
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -174,6 +175,23 @@ fun Application.configureRouting(
                         status = HttpStatusCode.BadRequest,
                         message = mapOf("error" to (e.message ?: "Invalid request"))
                     )
+                }
+            }
+
+            post("/files/extract") {
+                val request = call.receive<ExtractZipRequest>()
+                try {
+                    fileService.extractZip(
+                        zipPath = request.zipPath,
+                        relativePath = request.targetDir
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Extracted"))
+                } catch (e: Exception) {
+                    try {
+                        fileService.deleteFile(request.targetDir, recursive = true)
+                    } catch (_: Exception) { /* ignore */ }
+
+                    throw e
                 }
             }
         }

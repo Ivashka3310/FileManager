@@ -64,4 +64,11 @@ interface FileRemoteDataSource {
         archiveName: String,
         relativePaths: List<String>
     )
+
+    suspend fun extractZip(
+        url: String,
+        token: String,
+        zipPath: String,
+        targetDir: String
+    )
 }

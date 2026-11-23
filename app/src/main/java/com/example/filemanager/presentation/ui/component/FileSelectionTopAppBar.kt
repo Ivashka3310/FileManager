@@ -6,8 +6,10 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -26,8 +28,10 @@ import androidx.compose.runtime.setValue
 fun FileSelectionTopAppBar(
     selectedCount: Int,
     isSingleFile: Boolean,
+    isCompressed: Boolean,
     onClose: () -> Unit,
     onZip: () -> Unit,
+    onExtract: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onInfo: () -> Unit
@@ -73,14 +77,27 @@ fun FileSelectionTopAppBar(
                         )
                     }
 
-                    DropdownMenuItem(
-                        text = { Text("Создать ZIP") },
-                        leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
-                        onClick = {
-                            menuExpanded = false
-                            onZip()
-                        }
-                    )
+                    if (!isCompressed) {
+                        DropdownMenuItem(
+                            text = { Text("Создать ZIP") },
+                            leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onZip()
+                            }
+                        )
+                    }
+
+                    if (isCompressed && isSingleFile) {
+                        DropdownMenuItem(
+                            text = { Text("Распаковать") },
+                            leadingIcon = { Icon(Icons.Default.FolderZip, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onExtract()
+                            }
+                        )
+                    }
 
                     HorizontalDivider()
 

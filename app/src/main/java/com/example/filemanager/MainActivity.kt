@@ -25,6 +25,7 @@ import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
 import com.example.filemanager.domain.usecase.DeleteFilesUseCase
+import com.example.filemanager.domain.usecase.ExtractZipUseCase
 import com.example.filemanager.domain.usecase.GetJsonFileContentUseCase
 import com.example.filemanager.domain.usecase.GetPagedFilesUseCase
 import com.example.filemanager.domain.usecase.GetLocalDisksUseCase
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
         val getJsonFileContentUseCase = GetJsonFileContentUseCase(fileRepository)
         val getXmlFileContentUseCase = GetXmlFileContentUseCase(fileRepository)
         val createZipUseCase = CreateZipUseCase(fileRepository)
+        val extractZipUseCase = ExtractZipUseCase(fileRepository)
 
         val authViewModel: AuthViewModel by viewModels {
             viewModelFactory {
@@ -85,7 +87,8 @@ class MainActivity : ComponentActivity() {
                         createFileUseCase = createFileUseCase,
                         renameFileUseCase = renameFileUseCase,
                         deleteFilesUseCase = deleteFilesUseCase,
-                        createZipUseCase = createZipUseCase
+                        createZipUseCase = createZipUseCase,
+                        extractZipUseCase = extractZipUseCase
                     )
                 }
             }

@@ -1,7 +1,9 @@
 package com.example.filemanager.presentation.ui.srceen
 
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -42,7 +44,7 @@ import com.example.filemanager.presentation.ui.component.dialogs.InfoDialog
 import com.example.filemanager.presentation.ui.component.dialogs.RenameDialog
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.shared.models.FileItem
-@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ManageScreen(
     viewModel: ManageViewModel = viewModel(),
@@ -81,12 +83,18 @@ fun ManageScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             if (isSelectionMode) {
+                val file = selectedFiles.first()
                 FileSelectionTopAppBar(
                     selectedCount = selectedFiles.size,
                     isSingleFile = isSingleFile,
+                    isCompressed = file.name.endsWith(".zip"),
                     onClose = { viewModel.clearSelection() },
                     onZip = { showCreateZipDialog = true },
-                    onRename = { renameTarget = selectedFiles.first() },
+                    onExtract = {
+                        viewModel.extractZip(file.path, file.name)
+                        viewModel.clearSelection()
+                    },
+                    onRename = { renameTarget = file },
                     onDelete = { showDeleteDialog = true },
                     onInfo = { showInfoDialog = true }
                 )
@@ -145,6 +153,7 @@ fun ManageScreen(
                 onDismiss = { showDeleteDialog = false },
                 onConfirm = {
                     viewModel.deleteSelectedFiles()
+                    viewModel.clearSelection()
                     showDeleteDialog = false
                 }
             )
