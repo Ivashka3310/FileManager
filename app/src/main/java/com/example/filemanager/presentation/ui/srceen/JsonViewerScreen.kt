@@ -19,7 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.filemanager.domain.FileUiState
+import com.example.filemanager.domain.interfaces.FileUiState
 import com.example.filemanager.presentation.viewmodel.JsonViewerViewModel
 import com.sebastianneubauer.jsontree.JsonTree
 import com.sebastianneubauer.jsontree.TreeState

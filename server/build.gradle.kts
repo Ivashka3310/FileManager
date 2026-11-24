@@ -8,6 +8,17 @@ version = "1.0.0-SNAPSHOT"
 
 application {
     mainClass = "io.ktor.server.cio.EngineMain"
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
+
+tasks.withType<Jar> {
+    manifest {
+        attributes["Enable-Native-Access"] = "ALL-UNNAMED"
+    }
 }
 
 kotlin {
@@ -34,7 +45,9 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.core)
 
-
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.jdbc)
+    implementation(libs.sqlite.jdbc)
 }
 
 tasks.test {

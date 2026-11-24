@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.example.filemanager.domain.DisksUiState
+import com.example.filemanager.domain.interfaces.DisksUiState
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
 import com.example.filemanager.domain.usecase.DeleteFilesUseCase

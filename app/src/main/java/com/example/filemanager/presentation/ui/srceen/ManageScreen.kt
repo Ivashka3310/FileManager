@@ -66,7 +66,6 @@ fun ManageScreen(
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<FileItem?>(null) }
-    var menuTarget by remember { mutableStateOf<FileItem?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCreateZipDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -177,8 +176,6 @@ fun ManageScreen(
             FilesContent(
                 items = lazyPagingItems,
                 innerPadding = innerPadding,
-                menuTarget = menuTarget,
-                onMenuTargetChange = { menuTarget = it },
                 onFileClick = { file ->
                     if (isSelectionMode) {
                         viewModel.toggleSelection(file)

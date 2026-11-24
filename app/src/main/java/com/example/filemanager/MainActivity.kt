@@ -1,9 +1,11 @@
 package com.example.filemanager
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,8 +21,8 @@ import com.example.filemanager.data.local.FileLocalDataSource
 import com.example.filemanager.data.local.FileLocalMapper
 import com.example.filemanager.data.remote.FileRemoteDataSource
 import com.example.filemanager.data.remote.FileRemoteDataSourceImpl
-import com.example.filemanager.domain.FileRepository
-import com.example.filemanager.domain.SessionStorage
+import com.example.filemanager.domain.interfaces.FileRepository
+import com.example.filemanager.domain.interfaces.SessionStorage
 import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
@@ -39,6 +41,7 @@ import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.filemanager.presentation.viewmodel.XmlViewerViewModel
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         //enableEdgeToEdge()

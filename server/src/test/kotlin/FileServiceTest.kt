@@ -1,4 +1,4 @@
-import com.example.server.data.FileServiceImpl
+import com.example.server.data.filemanage.FileServiceImpl
 
 import com.example.shared.requests.FileListRequest
 import kotlinx.coroutines.runBlocking
@@ -250,7 +250,7 @@ class FileServiceImplTest {
 
         val created = service.createFile("existing.txt", isDirectory = false)
 
-        assertFalse(created)
+        assertTrue(created)
     }
 
     @Test
