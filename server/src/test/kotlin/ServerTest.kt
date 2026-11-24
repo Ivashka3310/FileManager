@@ -4,7 +4,8 @@ import com.example.server.api.configureRouting
 import com.example.server.api.security.AuthManager
 import com.example.server.api.security.JwtService
 import com.example.server.api.security.configureSecurity
-import com.example.server.data.FileServiceImpl
+import com.example.server.data.audit.AuditLogService
+import com.example.server.data.filemanage.FileServiceImpl
 import io.ktor.client.call.body
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.forms.FormDataContent
@@ -18,13 +19,21 @@ import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
 import io.ktor.serialization.gson.gson
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
+import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.install
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.Date
 import kotlin.io.path.Path
+import kotlin.system.exitProcess
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 class ServerTest {
     private fun Application.config() {
@@ -38,9 +47,16 @@ class ServerTest {
             secret = environment.config.propertyOrNull("jwt.secret")?.getString() ?: "fallback-secret-key",
             validityMs = environment.config.propertyOrNull("jwt.validityMs")?.getString()?.toLong() ?: 604800000L
         )
+
+        val auditLogService = AuditLogService()
+
+        launch {
+            auditLogService.logAction("SERVER_START", "SYSTEM", "TEST")
+        }
+
         configureSecurity(jwtService)
         val fileService = FileServiceImpl(rootPath = Path("/home"))
-        configureRouting(fileService, jwtService)
+        configureRouting(fileService, jwtService, auditLogService, {})
     }
 
     @Test

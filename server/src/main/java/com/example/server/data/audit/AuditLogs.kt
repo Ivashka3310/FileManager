@@ -1,4 +1,4 @@
-package com.example.server.data
+package com.example.server.data.audit
 
 import org.jetbrains.exposed.v1.core.Table
 

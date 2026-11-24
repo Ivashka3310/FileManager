@@ -3,8 +3,8 @@ package com.example.server.api
 import com.example.server.api.security.AuthManager
 import com.example.server.api.security.JwtService
 import com.example.server.api.security.configureSecurity
-import com.example.server.data.AuditLogService
-import com.example.server.data.FileServiceImpl
+import com.example.server.data.audit.AuditLogService
+import com.example.server.data.filemanage.FileServiceImpl
 import io.ktor.serialization.gson.gson
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped

@@ -2,7 +2,7 @@ package com.example.server.api
 
 import com.example.server.api.security.AuthManager
 import com.example.server.api.security.JwtService
-import com.example.server.data.AuditLogService
+import com.example.server.data.audit.AuditLogService
 import com.example.server.domain.FileService
 import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
