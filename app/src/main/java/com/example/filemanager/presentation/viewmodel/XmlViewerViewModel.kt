@@ -2,7 +2,7 @@ package com.example.filemanager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.filemanager.domain.FileUiState
+import com.example.filemanager.domain.interfaces.FileUiState
 import com.example.filemanager.domain.usecase.GetXmlFileContentUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

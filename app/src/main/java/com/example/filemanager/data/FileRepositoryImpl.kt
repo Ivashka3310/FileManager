@@ -5,12 +5,11 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
-import com.example.filemanager.data.local.FileEntity
 import com.example.filemanager.data.local.FileLocalDataSource
 import com.example.filemanager.data.local.FileLocalMapper
 import com.example.filemanager.data.remote.FileRemoteDataSource
-import com.example.filemanager.domain.FileRepository
-import com.example.filemanager.domain.SessionStorage
+import com.example.filemanager.domain.interfaces.FileRepository
+import com.example.filemanager.domain.interfaces.SessionStorage
 import com.example.shared.models.DiskInfo
 import com.example.shared.models.FileItem
 import kotlinx.coroutines.flow.Flow

@@ -8,5 +8,4 @@ data class FileListRequest(
     val extension: String? = null,
     val nameQuery: String? = null,
     val orderBy: String? = null,
-
 )

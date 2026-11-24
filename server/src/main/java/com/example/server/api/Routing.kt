@@ -2,6 +2,7 @@ package com.example.server.api
 
 import com.example.server.api.security.AuthManager
 import com.example.server.api.security.JwtService
+import com.example.server.data.AuditLogService
 import com.example.server.domain.FileService
 import com.example.shared.requests.CopyFileRequest
 import com.example.shared.requests.CreateFileRequest
@@ -15,6 +16,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
+import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveParameters
@@ -33,7 +35,9 @@ private val logger = LoggerFactory.getLogger("Routing")
 
 fun Application.configureRouting(
     fileService: FileService,
-    jwtService: JwtService
+    jwtService: JwtService,
+    auditLogService: AuditLogService,
+    onShutdown: () -> Unit
 ) {
     install(StatusPages) {
         exception<SecurityException> { call, cause ->
@@ -73,9 +77,14 @@ fun Application.configureRouting(
                 val request = call.receive<CreateFileRequest>()
                 val success = fileService.createFile(request.path, request.isDirectory)
                 if (success) {
+                    val type = if (request.isDirectory) "DIRECTORY" else "FILE"
+                    auditLogService.logAction("CREATE", request.path, "Type: $type")
                     call.respond(HttpStatusCode.Created, mapOf("message" to "Created"))
                 } else {
-                    call.respond(HttpStatusCode.Conflict, mapOf("error" to "File already exists or cannot be created"))
+                    call.respond(
+                        HttpStatusCode.Conflict,
+                        mapOf("error" to "File already exists or cannot be created")
+                    )
                 }
             }
 
@@ -87,6 +96,7 @@ fun Application.configureRouting(
                     overwrite = request.overwrite
                 )
                 if (success) {
+                    auditLogService.logAction("COPY", request.destinationPath, "From: ${request.sourcePath}")
                     call.respond(HttpStatusCode.OK, mapOf("message" to "Copied"))
                 } else {
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Copy failed"))
@@ -97,6 +107,7 @@ fun Application.configureRouting(
                 val request = call.receive<RenameFileRequest>()
                 val success = fileService.renameFile(request.oldPath, request.newPath)
                 if (success) {
+                    auditLogService.logAction("RENAME_OR_MOVE", request.newPath, "Old path: ${request.oldPath}")
                     call.respond(HttpStatusCode.OK, mapOf("message" to "Renamed"))
                 } else {
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Rename failed"))
@@ -105,16 +116,24 @@ fun Application.configureRouting(
 
             delete("/files/delete") {
                 val request = call.receive<DeleteFilesRequest>()
-                val relativePaths = request.relativePaths
-                val recursive = request.recursive
+                val failedPaths = mutableListOf<String>()
 
-                relativePaths.forEach { relativePath ->
-                    val deleted = fileService.deleteFile(relativePath, recursive)
+                request.relativePaths.forEach { relativePath ->
+                    val deleted = fileService.deleteFile(relativePath, request.recursive)
                     if (deleted) {
-                        call.respond(HttpStatusCode.NoContent)
+                        auditLogService.logAction("DELETE", relativePath, "Recursive: ${request.recursive}")
                     } else {
-                        call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Delete failed. Directory might not be empty."))
+                        failedPaths.add(relativePath)
                     }
+                }
+
+                if (failedPaths.isEmpty()) {
+                    call.respond(HttpStatusCode.NoContent)
+                } else {
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        mapOf("error" to "Failed to delete some items", "failed" to failedPaths)
+                    )
                 }
             }
 
@@ -152,7 +171,6 @@ fun Application.configureRouting(
 
             post("/files/zip") {
                 val request = call.receive<CreateZipRequest>()
-
                 val safeName = request.archiveName
                     .replace(Regex("[^a-zA-Zа-яА-Я0-9_-]"), "_")
                     .take(50)
@@ -165,16 +183,10 @@ fun Application.configureRouting(
                         relativePaths = request.relativePaths,
                         targetZipRelativePath = targetZipRelativePath
                     )
-
-                    call.respond(
-                        status = HttpStatusCode.Created,
-                        message = mapOf("message" to "Created")
-                    )
+                    auditLogService.logAction("ZIP_CREATE", targetZipRelativePath, "Files count: ${request.relativePaths.size}")
+                    call.respond(HttpStatusCode.Created, mapOf("message" to "Created"))
                 } catch (e: IllegalArgumentException) {
-                    call.respond(
-                        status = HttpStatusCode.BadRequest,
-                        message = mapOf("error" to (e.message ?: "Invalid request"))
-                    )
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Invalid request")))
                 }
             }
 
@@ -185,26 +197,61 @@ fun Application.configureRouting(
                         zipPath = request.zipPath,
                         relativePath = request.targetDir
                     )
+                    auditLogService.logAction("ZIP_EXTRACT", request.targetDir, "Archive: ${request.zipPath}")
                     call.respond(HttpStatusCode.OK, mapOf("message" to "Extracted"))
                 } catch (e: Exception) {
                     try {
                         fileService.deleteFile(request.targetDir, recursive = true)
                     } catch (_: Exception) { /* ignore */ }
-
                     throw e
                 }
+            }
+
+            get("/admin/logs") {
+                val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, 500) ?: 100
+                val offset = call.request.queryParameters["offset"]?.toLongOrNull()?.coerceAtLeast(0) ?: 0L
+                val logs = auditLogService.getLogs(limit, offset)
+                call.respond(HttpStatusCode.OK, logs)
+            }
+
+            delete("/admin/logs") {
+                val deletedCount = auditLogService.clearLogs()
+                auditLogService.logAction("LOGS_CLEARED", "SYSTEM", "Deleted rows: $deletedCount")
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Logs cleared", "deletedCount" to deletedCount))
+            }
+
+            post("/admin/shutdown") {
+                auditLogService.logAction("SERVER_SHUTDOWN", "SYSTEM", "Initiated via API")
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Server is shutting down..."))
+                onShutdown()
             }
         }
 
         post("/login") {
             val providedSecret = call.receiveParameters()["secret"] ?: ""
+            val clientIp = call.request.origin.remoteHost
 
             if (AuthManager.consumeSecret(providedSecret)) {
                 val token = jwtService.generateToken()
-                logger.info("Authorized")
-                AuthManager.tempQrSecret = null
+                logger.info("Authorized from $clientIp")
+                println("Client connected from $clientIp")
+
+                auditLogService.logAction(
+                    action = "LOGIN_SUCCESS",
+                    targetPath = "AUTH",
+                    details = "Client IP: $clientIp"
+                )
+
                 call.respond(mapOf("token" to token))
             } else {
+                logger.warn("Failed login attempt from $clientIp")
+
+                auditLogService.logAction(
+                    action = "LOGIN_FAILED",
+                    targetPath = "AUTH",
+                    details = "Invalid secret from IP: $clientIp"
+                )
+
                 call.respond(HttpStatusCode.Unauthorized, "Invalid secret key!")
             }
         }

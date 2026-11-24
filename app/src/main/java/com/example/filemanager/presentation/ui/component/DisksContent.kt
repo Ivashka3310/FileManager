@@ -16,7 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.filemanager.domain.DisksUiState
+import com.example.filemanager.domain.interfaces.DisksUiState
 
 @Composable
 fun DisksContent(

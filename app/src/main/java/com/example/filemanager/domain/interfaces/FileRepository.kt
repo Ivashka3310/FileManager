@@ -1,4 +1,4 @@
-package com.example.filemanager.domain
+package com.example.filemanager.domain.interfaces
 
 import androidx.paging.PagingData
 import com.example.shared.models.DiskInfo

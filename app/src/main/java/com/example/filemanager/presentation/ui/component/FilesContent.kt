@@ -37,8 +37,6 @@ import com.example.shared.models.FileItem
 fun FilesContent(
     items: LazyPagingItems<FileItem>,
     innerPadding: PaddingValues,
-    menuTarget: FileItem?,
-    onMenuTargetChange: (FileItem?) -> Unit,
     onFileClick: (FileItem) -> Unit,
     onFileLongClick: (FileItem) -> Unit,
     isSelectionMode: Boolean,

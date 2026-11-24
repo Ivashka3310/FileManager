@@ -24,10 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.filemanager.domain.FileUiState
+import com.example.filemanager.domain.interfaces.FileUiState
 import com.example.filemanager.presentation.viewmodel.XmlViewerViewModel
-import com.sebastianneubauer.jsontree.JsonTree
-import com.sebastianneubauer.jsontree.TreeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,6 +1,8 @@
 package com.example.filemanager.presentation.navigation
 
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -17,6 +19,7 @@ import com.example.filemanager.presentation.viewmodel.JsonViewerViewModel
 import com.example.filemanager.presentation.viewmodel.ManageViewModel
 import com.example.filemanager.presentation.viewmodel.XmlViewerViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),

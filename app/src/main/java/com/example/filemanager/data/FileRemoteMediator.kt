@@ -8,7 +8,7 @@ import com.example.filemanager.data.local.FileEntity
 import com.example.filemanager.data.local.FileLocalDataSource
 import com.example.filemanager.data.local.FileLocalMapper
 import com.example.filemanager.data.remote.FileRemoteDataSource
-import com.example.filemanager.domain.SessionStorage
+import com.example.filemanager.domain.interfaces.SessionStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 

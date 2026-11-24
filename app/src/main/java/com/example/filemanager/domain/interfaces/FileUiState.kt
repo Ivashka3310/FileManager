@@ -1,4 +1,4 @@
-package com.example.filemanager.domain
+package com.example.filemanager.domain.interfaces
 
 sealed interface FileUiState {
     data object Loading : FileUiState

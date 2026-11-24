@@ -19,8 +19,8 @@ import com.example.filemanager.data.local.FileLocalDataSource
 import com.example.filemanager.data.local.FileLocalMapper
 import com.example.filemanager.data.remote.FileRemoteDataSource
 import com.example.filemanager.data.remote.FileRemoteDataSourceImpl
-import com.example.filemanager.domain.FileRepository
-import com.example.filemanager.domain.SessionStorage
+import com.example.filemanager.domain.interfaces.FileRepository
+import com.example.filemanager.domain.interfaces.SessionStorage
 import com.example.filemanager.domain.usecase.ConnectViaQrDataUseCase
 import com.example.filemanager.domain.usecase.CreateFileUseCase
 import com.example.filemanager.domain.usecase.CreateZipUseCase
