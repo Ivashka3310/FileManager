@@ -9,3 +9,5 @@
 .cxx
 local.properties
 server/src/main/resources/application.conf
+.secrets
+.config/act/actrc
